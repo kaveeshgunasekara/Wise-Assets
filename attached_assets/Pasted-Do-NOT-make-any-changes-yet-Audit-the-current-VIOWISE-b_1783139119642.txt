@@ -1,0 +1,42 @@
+Do NOT make any changes yet. Audit the current VIOWISE build and produce a structured report only. I will decide what to fix afterward. For every claim, cite evidence from the actual code (file/component name, the actual value found) — do not mark anything "done" or "good" without showing proof.
+
+Produce the report in these sections:
+
+SECTION 1 — PAGE-BY-PAGE INVENTORY (all 12 pages)
+For each page (Landing, Sign-up, ID Verification, Verified, Sign in, Wisdom Wall, Profile, AI Matching, Pre-call Consent, Video Call, Story Capture, Help), report:
+- Does the page exist and render? (yes/no)
+- Every interactive element and what it actually does (real destination or state change) — flag any button/link that does nothing.
+- The exact content shown (names, quotes, topic tags) vs. the canonical spec.
+
+SECTION 2 — BACKGROUND ICON THEME (this is a known problem)
+The design calls for a subtle background layer of thin-line motifs (speech bubbles, linked circles, leaf lines) at ~4-6% opacity on every light page. Report:
+- Is this background layer implemented at all? In which component/CSS?
+- On which of the 12 pages does it actually render, and on which is it missing?
+- What is its current opacity/color, and is it sitting behind solid cards (correct) or missing/invisible/too faint?
+- Why is it not visible — not implemented, wrong z-index, wrong opacity, wrong color, or clipped?
+
+SECTION 3 — PREMIUM / VISUAL QUALITY GAPS
+Honestly assess where the UI looks generic or unfinished versus premium. Check and report actual values for:
+- Typography: is Fraunces actually loaded and used for the landing H1 and all wisdom quotes? Is Inter used elsewhere? Any fallback/system fonts showing?
+- Color: is the violet #53409B primary consistent? Any stray default blues/grays/other colors?
+- Corner radius (cards vs buttons), shadow style, spacing/whitespace, headline size hierarchy — list where they're inconsistent or cramped.
+- Are people shown as elegant initial-avatars (correct) or as broken/placeholder images?
+
+SECTION 4 — REQUIREMENTS COVERAGE
+For each, report present/partial/missing WITH evidence:
+- Government ID verification gate before account creation
+- Ranked AI matching with visible match percentages + "see why" reasoning
+- Sign-in lands on personalized Wisdom Wall (For you / All wisdom / My posts, mentor Requests tab)
+- Editable Profile page
+- Pre-call consent (3 toggles with On/Off text)
+- Video call: rotating translated subtitles + conversation prompts + report control
+- Two-step report-with-reasons (in-call and after call)
+- Story capture with 3 equal-dignity choices + dual-consent approval by the other person
+- Wisdom Wall loop (share → partner approves → appears with New badge → request a call)
+- Accessibility control (text size + high contrast) on every page
+- WCAG basics: nothing under 16px, labeled icons, visible focus rings, keyboard operable
+
+SECTION 5 — TOP FIXES, RANKED
+List the 10 highest-impact fixes to reach a premium, requirements-complete prototype, each with: the page, the problem, the specific fix, and effort (small/medium/large). Rank by impact on a 3-minute pitch demo.
+
+Rules: evidence over opinion, no rubber-stamping, and DO NOT change anything yet — report first.
