@@ -1,8 +1,43 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "2vCorA5i4GbvS7BR49rG8"
 uri = "file://artifacts/viowise/public/sam-portrait.png"
 type = "image"
 title = "Warm realistic video call portrait"
+
+[[outputs]]
+id = "nnX3vU7KTN0y9fTMhcprM"
+uri = "file://artifacts/viowise/public/favicon.svg"
+type = "image"
+title = "favicon.svg (scalable master, violet bubbles)"
+
+[[outputs]]
+id = "unW25viPkboDpefHegQ8W"
+uri = "file://artifacts/viowise/public/favicon-32x32.png"
+type = "image"
+title = "favicon-32x32.png"
+
+[[outputs]]
+id = "cItn11IZSeNJtr6iaJXD-"
+uri = "file://artifacts/viowise/public/favicon-16x16.png"
+type = "image"
+title = "favicon-16x16.png"
+
+[[outputs]]
+id = "DYLdzpUsPT27YKBlKFlfH"
+uri = "file://artifacts/viowise/public/apple-touch-icon.png"
+type = "image"
+title = "apple-touch-icon.png (180x180, violet square)"
+
+[[outputs]]
+id = "9yV3djjciUc__BzZoAHNw"
+uri = "file://artifacts/viowise/public/app-icon-512.png"
+type = "image"
+title = "app-icon-512.png (512x512, violet square)"
+
+[[outputs]]
+id = "mxuMZIjnb1TUY7EO8TiEQ"
+uri = "file://artifacts/viowise/public/favicon-square.svg"
+type = "image"
+title = "favicon-square.svg (white bubbles on violet, master)"
