@@ -1,0 +1,26 @@
+Apply these fixes in order. After each, confirm the file and the change. Do NOT redesign or restructure — targeted fixes only, don't break working flows.
+
+=== TIER 1: DEAD CLICKS (highest priority — no button may do nothing) ===
+
+FIX A — Accessibility control dead/missing on all 5 pre-auth pages (Landing, SignUp, IdVerification, Verified, SignIn). Extract the WORKING accessibility dropdown from AppNav.tsx into a shared component and render it in the header of all 5 pre-auth pages. The "Aa Accessibility" button must open the text-size + high-contrast popover and actually change the app, exactly like it does in AppNav. No page may have a non-functional or missing Aa button.
+
+FIX B — Video call Mute and Camera buttons are dead (VideoCall.tsx lines ~115-126). Add local toggle state to each: Mute swaps mic/mic-off icon + label, Camera swaps camera/camera-off icon + label. No real media needed — just visible on/off feedback. Add aria-label to both buttons.
+
+FIX C — Story Capture dead buttons (StoryCapture.tsx lines ~106, ~110). Wire "Schedule another call with [name]" to show a green "Request sent — we'll confirm a time." confirmation (no navigation needed). Wire "Report a problem with this call" to open the SAME report modal used in VideoCall, with the reasons list plus "I felt pressured to share my story."
+
+=== TIER 2: BROKEN LOGIC ===
+
+FIX D — Sign-in hardcodes mentor/Grace (SignIn.tsx lines ~11-16). Read the role/user already set during sign-up from context instead of hardcoding. A learner (Sam) who signs in must stay Sam; a mentor stays Grace. Default to learner/Sam only if no prior role exists.
+
+FIX E — The signature background motif is the WRONG artwork. Current .bg-pattern (index.css ~line 108) is a dot pattern. Replace the SVG data URI with thin-LINE motifs — outlined speech bubbles, overlapping/linked outline circles, and simple leaf/branch lines — stroke color #53409B, stroke-width ~1.4, fill none, at 5% opacity, as a REPEATING tile (background-repeat: repeat, background-size ~340px) so it covers the full height of every light page. It must read as elegant line-art, not dots. Keep it excluded from the dark VideoCall page.
+
+FIX F — Profile Save discards name/bio/languages (Profile.tsx). Make those three inputs controlled state and include them in the save so all four field types persist, not just topics.
+
+=== TIER 3: POLISH (only if Tier 1-2 are clean) ===
+
+FIX G — AIMatching.tsx line ~18: replace off-canon "Elena, 24" with a canonical or on-theme learner (reuse Sam or add a plausible learner consistent with the cast).
+FIX H — "For you" tab must differ from "All wisdom" (WisdomWall.tsx). Filter "For you" to stories matching the signed-in user's selected topics; leave "All wisdom" unfiltered.
+FIX I — Raise sub-16px text: change text-xs and text-sm (and explicit text-[14px]/text-[12px]) to a 16px minimum across pages, scaling with the text-size multiplier.
+FIX J — VideoCall report-confirmation stray colors (lines ~159,167,171): swap bg-green-100/text-green-600 → success token, text-gray-500/600 → foreground tokens used elsewhere.
+
+After all fixes: click EVERY button on EVERY page as both a mentor and a learner. Report any element that still does nothing, and confirm the background is now line-art motifs visible top-to-bottom on every light page.

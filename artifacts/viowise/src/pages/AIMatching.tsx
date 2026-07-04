@@ -15,7 +15,7 @@ export default function AIMatching() {
 
   const matchesForMentor = [
     { id: "4", name: "Sam", age: 21, bio: "International student dealing with career anxiety.", shared: ["Career", "Migration"], percent: 92, reason: "Sam is starting the career journey you've already lived, dealing with identical pressures." },
-    { id: "5", name: "Elena", age: 24, bio: "Recent grad reconsidering her major.", shared: ["Career"], percent: 85, reason: "Your experience starting over later in life provides perfect perspective for her early-career doubts." },
+    { id: "5", name: "Priya", age: 23, bio: "Recent graduate figuring out her next career move.", shared: ["Career"], percent: 85, reason: "Your experience starting over later in life provides perfect perspective for her early-career doubts." },
   ];
 
   const matches = role === "mentor" ? matchesForMentor : matchesForLearner;
@@ -30,7 +30,7 @@ export default function AIMatching() {
             <p className="text-[18px] text-foreground/80 mt-2">Ranked by our AI — you choose.</p>
           </div>
           <div className="text-right">
-            <span className="inline-block px-4 py-2 bg-secondary text-primary rounded-full text-sm font-medium border border-border">Updated just now</span>
+            <span className="inline-block px-4 py-2 bg-secondary text-primary rounded-full text-base font-medium border border-border">Updated just now</span>
           </div>
         </div>
 
@@ -54,7 +54,7 @@ export default function AIMatching() {
                     <p className="text-[16px] text-foreground/80 mt-1">{m.bio}</p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       {m.shared.map(t => (
-                        <span key={t} className="px-3 py-1 bg-[#F4F1FC] border border-[#C5BCDF] text-primary rounded-full text-sm font-medium flex items-center gap-1">
+                        <span key={t} className="px-3 py-1 bg-[#F4F1FC] border border-[#C5BCDF] text-primary rounded-full text-base font-medium flex items-center gap-1">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                           Shared {t}
                         </span>

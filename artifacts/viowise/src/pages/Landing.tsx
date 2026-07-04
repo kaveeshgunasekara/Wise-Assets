@@ -1,23 +1,22 @@
 import { Link } from "wouter";
 import { useApp } from "@/hooks/use-app";
+import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function Landing() {
   const { setRole } = useApp();
 
   return (
     <div className="min-h-screen bg-pattern relative overflow-hidden flex flex-col">
-      <header className="px-6 py-4 flex items-center justify-between z-10">
-        <div className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-sm">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinelinejoin="round">
+      <header className="relative px-6 py-4 flex items-center justify-between z-20">
+        <div className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           VIOWISE
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           <Link href="/sign-in" className="px-4 py-2 font-medium text-foreground hover:text-primary transition-colors">Sign in</Link>
-          <button className="px-4 py-2 bg-white text-primary border border-primary/20 rounded-xl font-medium flex items-center gap-2">
-            <span>Aa</span> Accessibility
-          </button>
+          <AccessibilityControl />
         </div>
       </header>
 
@@ -41,7 +40,7 @@ export default function Landing() {
       </main>
       
       <footer className="mt-auto py-8 text-center text-foreground/60 text-[16px] flex items-center justify-center gap-2 z-10">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinelinejoin="round">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
         Every member is ID-verified. Calls are never recorded.

@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useApp } from "@/hooks/use-app";
+import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function Verified() {
   const { role } = useApp();
@@ -7,13 +8,14 @@ export default function Verified() {
 
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
-      <header className="px-6 py-4">
-        <Link href="/" className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-sm">
+      <header className="px-6 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           VIOWISE
         </Link>
+        <AccessibilityControl />
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-lg mx-auto pb-20">

@@ -6,12 +6,22 @@ export default function Profile() {
   const { role, user, setUser } = useApp();
   const [saved, setSaved] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(user?.topics || []);
+  const [displayName, setDisplayName] = useState(user?.name || (role === "mentor" ? "Grace" : "Sam"));
+  const [bio, setBio] = useState(user?.bio || (role === "mentor" ? "Rebuilt nursing career after moving from the Philippines." : "International student figuring it out."));
+  const [languages, setLanguages] = useState(user?.languages || (role === "mentor" ? "English, Tagalog" : "English, Mandarin"));
 
   const topics = ["Career", "Family", "Migration", "Health", "Confidence", "Study", "Relationships", "Resilience"];
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setUser({ ...user, topics: selectedTopics });
+    setUser({
+      ...user,
+      name: displayName,
+      age: user?.age ?? (role === "mentor" ? 72 : 21),
+      topics: selectedTopics,
+      bio,
+      languages,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -54,15 +64,15 @@ export default function Profile() {
           <div className="bg-white p-8 rounded-[16px] card-shadow space-y-6">
             <div>
               <label className="block text-[16px] font-medium mb-2">Display name</label>
-              <input type="text" className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue={user?.name || (role === "mentor" ? "Grace" : "Sam")} />
+              <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
             </div>
             <div>
               <label className="block text-[16px] font-medium mb-2">One-line life experience</label>
-              <input type="text" className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue={role === "mentor" ? "Rebuilt nursing career after moving from the Philippines." : "International student figuring it out."} />
+              <input type="text" value={bio} onChange={(e) => setBio(e.target.value)} className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
             </div>
             <div>
               <label className="block text-[16px] font-medium mb-2">Languages (comma separated)</label>
-              <input type="text" className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue={role === "mentor" ? "English, Tagalog" : "English, Mandarin"} />
+              <input type="text" value={languages} onChange={(e) => setLanguages(e.target.value)} className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
             </div>
           </div>
 

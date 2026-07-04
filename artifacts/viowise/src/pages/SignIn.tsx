@@ -1,31 +1,45 @@
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
+import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function SignIn() {
-  const { setRole, setUser } = useApp();
+  const { role, setRole, setUser } = useApp();
   const [, setLocation] = useLocation();
+
+  // Preserve whichever role was chosen during sign-up; only default to
+  // learner/Sam if the visitor arrived directly at Sign in with no prior role.
+  const activeRole = role ?? "learner";
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default to Grace (mentor) for demo if not already set
-    setRole("mentor");
-    setUser({
-      name: "Grace",
-      age: 72,
-      topics: ["Career", "Migration", "Resilience"]
-    });
+    if (activeRole === "mentor") {
+      setRole("mentor");
+      setUser({
+        name: "Grace",
+        age: 72,
+        topics: ["Career", "Migration", "Resilience"]
+      });
+    } else {
+      setRole("learner");
+      setUser({
+        name: "Sam",
+        age: 21,
+        topics: ["Career", "Study"]
+      });
+    }
     setLocation("/wall");
   };
 
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
-      <header className="px-6 py-4">
-        <Link href="/" className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-sm">
+      <header className="px-6 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           VIOWISE
         </Link>
+        <AccessibilityControl />
       </header>
 
       <main className="flex-1 flex items-center justify-center px-6 py-12">
@@ -35,7 +49,7 @@ export default function SignIn() {
           <form className="space-y-5" onSubmit={handleSignIn}>
             <div>
               <label className="block text-[16px] font-medium mb-2">Email</label>
-              <input type="email" required className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue="grace@example.com" />
+              <input type="email" required className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue={activeRole === "mentor" ? "grace@example.com" : "sam@example.com"} />
             </div>
             <div>
               <label className="block text-[16px] font-medium mb-2">Password</label>

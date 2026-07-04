@@ -16,7 +16,7 @@ interface Story {
 interface AppContextType {
   role: Role;
   setRole: (role: Role) => void;
-  user: { name: string; age: number; topics: string[] } | null;
+  user: { name: string; age: number; topics: string[]; bio?: string; languages?: string } | null;
   setUser: (user: any) => void;
   textSize: "Standard" | "Large" | "Extra large";
   setTextSize: (size: "Standard" | "Large" | "Extra large") => void;
@@ -40,7 +40,7 @@ export const CANONICAL_STORIES: Story[] = [
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>(null);
-  const [user, setUser] = useState<{ name: string; age: number; topics: string[] } | null>(null);
+  const [user, setUser] = useState<{ name: string; age: number; topics: string[]; bio?: string; languages?: string } | null>(null);
   const [textSize, setTextSize] = useState<"Standard" | "Large" | "Extra large">("Standard");
   const [highContrast, setHighContrast] = useState(false);
   const [stories, setStories] = useState<Story[]>(CANONICAL_STORIES);

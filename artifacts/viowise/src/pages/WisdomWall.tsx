@@ -3,7 +3,7 @@ import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
 
 export default function WisdomWall() {
-  const { role, setRole, stories, pendingStory, setPendingStory, addStory } = useApp();
+  const { role, user, setRole, stories, pendingStory, setPendingStory, addStory } = useApp();
   const [tab, setTab] = useState("For you");
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
@@ -25,6 +25,7 @@ export default function WisdomWall() {
     if (topicFilter && s.topic !== topicFilter) return false;
     if (search && !s.quote.toLowerCase().includes(search.toLowerCase()) && !s.topic.toLowerCase().includes(search.toLowerCase())) return false;
     if (tab === "My posts" && s.author !== (role === "mentor" ? "Grace" : "Sam")) return false;
+    if (tab === "For you" && user?.topics && user.topics.length > 0 && !user.topics.includes(s.topic)) return false;
     return true;
   });
 
@@ -33,7 +34,7 @@ export default function WisdomWall() {
       <AppNav />
 
       {/* Demo Role Switcher */}
-      <div className="bg-secondary p-2 text-center text-sm font-medium border-b border-border z-10 relative">
+      <div className="bg-secondary p-2 text-center text-base font-medium border-b border-border z-10 relative">
         Demo: Viewing as {role === "mentor" ? "Grace (Mentor)" : "Sam (Learner)"}
         <button onClick={() => setRole(role === "mentor" ? "learner" : "mentor")} className="ml-4 text-primary underline">Switch role</button>
       </div>
@@ -64,7 +65,7 @@ export default function WisdomWall() {
             >
               {t}
               {t === "Requests" && requests.length > 0 && (
-                <span className="ml-2 bg-primary text-white text-xs px-2 py-0.5 rounded-full">{requests.length}</span>
+                <span className="ml-2 bg-primary text-white text-base px-2 py-0.5 rounded-full">{requests.length}</span>
               )}
               {tab === t && <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-t-full" />}
             </button>
@@ -107,6 +108,7 @@ export default function WisdomWall() {
                   <button
                     key={t}
                     onClick={() => setTopicFilter(topicFilter === t ? null : t)}
+                    aria-pressed={topicFilter === t}
                     className={`px-4 py-2 rounded-full border text-[16px] whitespace-nowrap transition-colors ${topicFilter === t ? "bg-primary/10 border-primary text-primary" : "border-border bg-white text-foreground/70 hover:border-primary/50"}`}
                   >
                     {t}
@@ -132,10 +134,10 @@ export default function WisdomWall() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredStories.map(story => (
                 <div key={story.id} className="bg-white p-8 rounded-[16px] card-shadow flex flex-col h-full relative">
-                  {story.isNew && <span className="absolute top-6 right-6 bg-accent text-white px-3 py-1 rounded-full text-sm font-semibold tracking-wide uppercase">NEW</span>}
+                  {story.isNew && <span className="absolute top-6 right-6 bg-accent text-white px-3 py-1 rounded-full text-base font-semibold tracking-wide uppercase">NEW</span>}
                   
                   <div className="mb-4">
-                    <span className="inline-block px-3 py-1 rounded-full bg-secondary text-primary text-sm font-medium border border-border/50">
+                    <span className="inline-block px-3 py-1 rounded-full bg-secondary text-primary text-base font-medium border border-border/50">
                       {story.topic}
                     </span>
                   </div>
@@ -151,7 +153,7 @@ export default function WisdomWall() {
                       </div>
                       <div>
                         <div className="font-semibold text-[16px]">{story.author}, {story.age}</div>
-                        {story.credential && <div className="text-foreground/60 text-[14px]">{story.credential}</div>}
+                        {story.credential && <div className="text-foreground/60 text-base">{story.credential}</div>}
                       </div>
                     </div>
                     {role !== "mentor" && (
@@ -165,7 +167,7 @@ export default function WisdomWall() {
                     )}
                   </div>
                   {callRequests[story.id] && (
-                    <div className="mt-4 text-[14px] text-success font-medium text-right">
+                    <div className="mt-4 text-base text-success font-medium text-right">
                       {story.author} will respond within 2 days.
                     </div>
                   )}
