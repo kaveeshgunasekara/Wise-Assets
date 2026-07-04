@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "2vCorA5i4GbvS7BR49rG8"
+uri = "file://artifacts/viowise/public/sam-portrait.png"
+type = "image"
+title = "Warm realistic video call portrait"

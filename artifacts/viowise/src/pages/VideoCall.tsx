@@ -1,0 +1,184 @@
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "wouter";
+import { useApp } from "@/hooks/use-app";
+
+export default function VideoCall() {
+  const { role } = useApp();
+  const [, setLocation] = useLocation();
+  const [timer, setTimer] = useState(32 * 60); // Start around 32 mins
+  const [subtitlesOn, setSubtitlesOn] = useState(true);
+  const [subIndex, setSubIndex] = useState(0);
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [promptVisible, setPromptVisible] = useState(true);
+  const [reportModal, setReportModal] = useState<number>(0);
+  const [reportReason, setReportReason] = useState("");
+
+  const partnerName = role === "mentor" ? "Sam" : "Grace";
+
+  const subtitles = [
+    { text: "我担心我选错了专业……", trans: "Sam: I'm worried I chose the wrong degree..." },
+    { text: "Grace: I re-took my nursing exams at 38, in a new country.", trans: "" },
+    { text: "你后悔过吗？", trans: "Sam: Did you ever regret it?" },
+    { text: "Grace: Only the years I spent being afraid to start.", trans: "" }
+  ];
+
+  const prompts = [
+    "What advice would you give your younger self?",
+    "Tell me about a time you had to start over.",
+    "What's the hardest lesson you learned in your career?",
+    "How did you know when it was time to make a change?"
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => setTimer(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (reportModal !== 0) return; // pause if modal open
+    const interval = setInterval(() => setSubIndex(i => (i + 1) % subtitles.length), 6000);
+    return () => clearInterval(interval);
+  }, [reportModal, subtitles.length]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleEndCall = () => {
+    setLocation("/story-capture");
+  };
+
+  return (
+    <div className="h-screen w-full bg-[#17141F] text-white flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(to bottom, #17141F, #1C1730)' }}>
+      
+      {/* Header */}
+      <header className="absolute top-0 w-full p-6 flex justify-between items-start z-20 bg-gradient-to-b from-[#17141F]/80 to-transparent">
+        <div>
+          <h1 className="text-[20px] font-medium drop-shadow-md">Call with {partnerName}</h1>
+          <div className="text-[18px] opacity-80 font-mono mt-1 drop-shadow-md">{formatTime(timer)}</div>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <button 
+            onClick={() => setSubtitlesOn(!subtitlesOn)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border ${subtitlesOn ? 'bg-white/20 border-white/30' : 'bg-black/40 border-white/10'}`}
+          >
+            Live subtitles: {subtitlesOn ? "On" : "Off"}
+          </button>
+          <div className="px-3 py-1.5 bg-[#A594E8]/20 border border-[#A594E8]/40 text-[#A594E8] rounded-full text-sm font-medium flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            Story capture on
+          </div>
+        </div>
+      </header>
+
+      {/* Main Video Area */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {/* Placeholder for the portrait if we want to use the generated image */}
+        <img src="/sam-portrait.png" alt="Sam" className="w-full h-full object-cover opacity-80" />
+      </div>
+
+      {/* Self View */}
+      <div className="absolute top-24 right-6 w-32 h-48 bg-black/60 rounded-[12px] border border-white/20 overflow-hidden shadow-2xl z-20 flex flex-col justify-end p-2 backdrop-blur-sm">
+        <div className="text-white/80 text-xs font-medium px-2 py-1 bg-black/40 rounded w-max">You</div>
+      </div>
+
+      {/* Prompt Card */}
+      {promptVisible && (
+        <div className="absolute top-24 left-6 max-w-xs bg-white/10 backdrop-blur-md border border-white/20 rounded-[16px] p-4 shadow-2xl z-20">
+          <p className="font-serif italic text-[18px] mb-3">"{prompts[promptIndex]}"</p>
+          <div className="flex gap-2">
+            <button onClick={() => setPromptIndex((i) => (i + 1) % prompts.length)} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition">New question</button>
+            <button onClick={() => setPromptVisible(false)} className="px-3 py-1.5 hover:bg-white/10 rounded-lg text-sm font-medium transition">Hide</button>
+          </div>
+        </div>
+      )}
+      {!promptVisible && (
+        <button onClick={() => setPromptVisible(true)} className="absolute top-24 left-6 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full shadow-2xl z-20 text-sm font-medium">
+          Show prompt
+        </button>
+      )}
+
+      {/* Subtitles Area */}
+      {subtitlesOn && (
+        <div className="absolute bottom-32 left-0 right-0 flex justify-center px-6 z-20 pointer-events-none">
+          <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-[16px] p-4 max-w-2xl w-full text-center shadow-2xl transition-all duration-500">
+            <p className="text-[20px] font-medium leading-relaxed">{subtitles[subIndex].text}</p>
+            {subtitles[subIndex].trans && <p className="text-[16px] text-white/70 mt-1">{subtitles[subIndex].trans}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Controls Footer */}
+      <footer className="absolute bottom-0 w-full p-6 flex justify-center items-end gap-6 z-20 bg-gradient-to-t from-[#17141F] to-transparent pt-32">
+        <button className="flex flex-col items-center gap-2 group">
+          <div className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          </div>
+          <span className="text-sm font-medium opacity-80 group-hover:opacity-100">Mute</span>
+        </button>
+        <button className="flex flex-col items-center gap-2 group">
+          <div className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </div>
+          <span className="text-sm font-medium opacity-80 group-hover:opacity-100">Camera</span>
+        </button>
+        <button onClick={handleEndCall} className="flex flex-col items-center gap-2 group">
+          <div className="w-16 h-16 rounded-full bg-[#DC2626] hover:bg-[#B91C1C] flex items-center justify-center transition shadow-lg shadow-red-900/20">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/></svg>
+          </div>
+          <span className="text-sm font-medium text-red-400">End call</span>
+        </button>
+        <button onClick={() => setReportModal(1)} className="flex flex-col items-center gap-2 group absolute right-6 bottom-6">
+          <div className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+          </div>
+          <span className="text-sm font-medium opacity-60 group-hover:opacity-100">Report</span>
+        </button>
+      </footer>
+
+      {/* Report Modal */}
+      {reportModal > 0 && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 text-black">
+          <div className="bg-white rounded-[16px] max-w-md w-full p-8 shadow-2xl">
+            {reportModal === 1 ? (
+              <>
+                <h2 className="text-[24px] font-semibold mb-6">Report this call</h2>
+                <div className="space-y-3 mb-6">
+                  {["Made me uncomfortable", "Inappropriate behavior or language", "Asked for money or personal details", "Not who they said they were", "Something else"].map(r => (
+                    <label key={r} className="flex items-center gap-4 p-4 border border-border rounded-[12px] cursor-pointer hover:bg-secondary/50 transition">
+                      <input type="radio" name="report" value={r} onChange={() => setReportReason(r)} checked={reportReason === r} className="w-5 h-5 accent-[#DC2626]" />
+                      <span className="text-[16px] font-medium">{r}</span>
+                    </label>
+                  ))}
+                  {reportReason === "Something else" && (
+                    <textarea className="w-full mt-2 p-3 border border-border rounded-lg text-sm" placeholder="Please describe..." rows={3}></textarea>
+                  )}
+                </div>
+                <p className="text-gray-500 text-[14px] mb-6">{partnerName} won't be notified.</p>
+                <div className="flex gap-3 justify-end">
+                  <button onClick={() => setReportModal(0)} className="px-4 py-2 font-medium">Cancel</button>
+                  <button onClick={() => setReportModal(2)} disabled={!reportReason} className="px-6 py-2 bg-[#DC2626] text-white rounded-lg font-medium disabled:opacity-50">Submit report</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-6">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+                </div>
+                <h2 className="text-[24px] font-semibold mb-4">Your report has been received.</h2>
+                <p className="text-[16px] text-gray-600 mb-8">Reviewed within 24 hours. You won't be matched with this person again.</p>
+                <div className="flex flex-col gap-3">
+                  <button onClick={handleEndCall} className="w-full px-6 py-3 bg-[#DC2626] text-white rounded-lg font-medium">End call now</button>
+                  <button onClick={() => setReportModal(0)} className="w-full px-6 py-3 border border-border rounded-lg font-medium">Continue the call</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

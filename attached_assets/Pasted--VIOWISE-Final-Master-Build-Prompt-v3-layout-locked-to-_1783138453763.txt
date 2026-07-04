@@ -1,0 +1,90 @@
+# VIOWISE — Final Master Build Prompt (v3, layout-locked to approved mockups)
+### For Lovable. Paste everything below as your first message. Attach the 12 approved page images alongside this prompt.
+---
+
+## BUILD TO MATCH THE ATTACHED MOCKUPS EXACTLY
+Twelve approved design mockups are provided (one per page). Reproduce each page's LAYOUT, SPACING, COMPONENT PLACEMENT, COLORS, TYPOGRAPHY, and overall premium feel as closely as possible. The mockups are the source of truth for VISUAL DESIGN. This written spec is the source of truth for BEHAVIOR, COPY, NAMES, and FLOW. Where a mockup shows different names, quotes, or tag labels than this spec, THIS SPEC WINS (the mockups used placeholder content). Match the look; use the copy below.
+
+## CANONICAL CONTENT — use these EXACT values everywhere, no drift
+- **Grace's wisdom quote (identical on the Story Capture page AND her Wisdom Wall card):** "It's never too late to begin again. I re-took my nursing exams at 38. It was hard, but it reminded me that courage grows with each small step." Title above it: "On starting over". Attribution: "— Grace, 72". Topic tag: Migration.
+- **The cast (same people on the Wisdom Wall and AI Matching):** Grace 72, Ahmed 68, Maria 75, John 81, Rosa 66, Linh 70. Sam 21 is the learner. NEVER use Margaret/Arthur/Evelyn/James/David/Doris/Robert — those were placeholders.
+- **Topic tags — the ONLY allowed set (identical on landing cards, wall, profile, matching):** Career, Family, Migration, Health, Confidence, Study, Relationships, Resilience. NEVER invent "Life Lessons", "Mindset", "Career & Purpose", "Creativity", etc.
+- **Other five wall quotes:** Ahmed (Career) "I spent 30 years worrying about being behind. Nobody is keeping score but you." · Maria (Confidence) "Confidence isn't feeling ready. It's going anyway." · John (Family) "We argued about everything except what mattered. Say the important things first." · Rosa (Study) "Failing my first year of university was the best thing that happened to me. It taught me how I actually learn." · Linh (Migration) "Homesickness never fully goes away. It just becomes a second heartbeat you learn to live with."
+
+---
+
+Build a complete, premium, minimal-content clickable web prototype called **VIOWISE** — a platform where elderly mentors (60+) share life wisdom with young learners (18-35) through AI-facilitated video conversations. Elderly users are experts, never patients. AI facilitates (matching, translation, prompts, story capture) but never replaces human conversation. Tone: quiet luxury, warm, dignified.
+
+Pitch-demo prototype: mock all backend behavior, but EVERY visible interactive element must do something meaningful. Zero dead clicks.
+
+## DESIGN SYSTEM
+
+**Visual identity — NO PHOTOGRAPHY on light pages.** Instead: an abstract background icon layer — a sparse, oversized pattern of thin-line motifs (speech bubbles, linked circles, gentle leaf/branch lines) in violet at 4-6% opacity, consistent across all light pages, never behind text blocks (solid white cards always sit on top). People are represented by warm violet-tinted initial-avatars (e.g., a circle with "G" for Grace) — elegant, consistent, no stock photos. EXCEPTION: the video call screen uses realistic warm portrait imagery, because it depicts a live call.
+
+**Colors:** page bg gradient 160deg #F7F5FB → #EFEAF9 (surfaces only) · cards white, border #E6E1F2, radius 16px, shadow rgba(83,64,155,0.10) · primary #53409B (hover #3D2F7A) · tints #EEEBF7 with border #C5BCDF · accent #8A7BC8 (badges only, never text) · green #16A34A confirmations only · red #DC2626 End call + report-danger only · dark call screen gradient #17141F → #1C1730, accent #A594E8.
+
+**Typography:** Inter for UI; Fraunces ONLY for the landing headline and wisdom quotes (400 italic). Body 18px+, nothing below 16px anywhere. Buttons/inputs radius 12px, min 48px tall (primary CTAs 56-64px). Headline scale generous: landing H1 56px, page H1s 40px, eyebrow labels 16px uppercase letterspaced violet.
+
+**Minimal content rule:** every page carries the fewest words that still instruct, reassure, or explain an AI action. No marketing filler. Trust/consent sentences are one line each and MUST NOT be cut.
+
+**Accessibility (global, non-negotiable):** every icon labeled; toggles show On/Off text (18px); selection = border + checkmark + tint (never color alone); 3px violet focus rings; keyboard operable; aria-live on counters/confirmations; modals focus-trapped, Escape closes. Persistent **"Aa Accessibility"** button (48px, icon+text) in every nav: popover with Text size (Standard / Large 115% / Extra large 130% — via CSS variable, layouts must survive Extra large) and High contrast (On/Off — text #0F0D14, borders darker, gradient → solid). Persists across pages.
+
+## PEOPLE (initial-avatars, consistent everywhere)
+Grace 72 (mentor; retired nurse, moved from the Philippines, rebuilt career at 38; English + Tagalog; Career, Migration, Resilience) · Sam 21 (learner; international student; Mandarin + English) · Mentors on wall/matches: Ahmed 68 (engineer, career-changed at 45), Maria 75 (business owner 40 yrs), John 81 (married 55 yrs), Rosa 66 (retired professor), Linh 70 (moved from Vietnam 1979).
+
+## PAGES (12) AND FLOW
+
+### 1. LANDING
+Nav: speech-bubble logo + VIOWISE · "Sign in" (→ p5) · Aa. Center: eyebrow "CONNECTING GENERATIONS" → H1 Fraunces "Your experience is someone's answer." → one subline "Real conversations between generations, guided by AI — never replaced by it." → two equal buttons: "I want to share my wisdom" / "I want to learn from experience" (→ p2 with role). Below: three wisdom quote cards (Grace/Ahmed/Maria pattern from p10). Footer line: shield + "Every member is ID-verified. Calls are never recorded." Background icon layer on. NO hero photo.
+
+### 2. SIGN-UP
+"Step 1 of 3." Two role cards (pre-selected from landing; initial-avatar illustration style). Fields: Full name, Email, Password (labels above, Show/Hide password text toggle). One line: "A government-issued ID is required to join." Button "Continue to verification" → p3. "Already a member? Sign in" → p5.
+
+### 3. ID VERIFICATION (the gate)
+"Step 2 of 3." One card: title "Verify your identity", one sentence: "Every member verifies with a government-issued ID. No verification, no account — that's how we keep everyone safe." ID-type select (Passport / Driver licence / National ID), mock upload area (click → shows a checkmark "ID received"), privacy line: "Your ID is used only for verification and is never shown to other members." Button "Submit for verification" → 1.5s "Verifying…" spinner → p4.
+
+### 4. VERIFIED (success pause)
+"Step 3 of 3." Nearly empty page: large green check in a soft circle, H1 "You're verified, Grace.", one line "Welcome to VIOWISE.", one button "Sign in to your account" → p5. Premium = restraint here.
+
+### 5. SIGN IN
+Email + password + "Sign in" button (→ p6). "New here? Create an account" → p2. Minimal.
+
+### 6. WISDOM WALL — the logged-in home
+App nav appears (all logged-in pages): logo · Wisdom Wall · AI Matching · Help · Aa · avatar (dropdown: Profile → p7, Sign out → p1).
+- View tabs: **"For you"** (default; personalized by role — a learner sees mentors' wisdom ranked by HIS SIGNUP TOPICS from day one, so a brand-new user's wall is instantly populated, never empty; a mentor sees wisdom relevant to her topics plus her impact) / **"All wisdom"** / **"My posts"** (empty state for new users: one line "Stories from your conversations will appear here.") / mentors also see a **"Requests"** tab with a count badge: incoming call requests as cards — "Sam, 21 · wants to talk about Career · Accept / Decline"; Accept → p9, Decline → quiet "Request declined" (requester sees a neutral "Grace isn't available right now").  One shared wall, personalized lenses — NEVER segregated by age.
+- **Approval card (learner view, closes the dual-consent loop):** in Sam's "For you" view, a distinct soft-violet card: "Grace wants to share a story from your conversation" + the story text + two equal buttons Approve / Decline. Approve → the story appears on the wall with its "New" badge. This state makes the consent model visibly real.
+- Topic filter chips + labeled search (live, with empty state + reset).
+- 2-column cards: topic chip → Fraunces italic quote → author initial-avatar + "Name, Age" + credential → "Request a call" → click becomes green "Request sent — [Name] will respond within 2 days." Grace's newest post first with "New" badge — use her CANONICAL quote above, identical to p11. The six cards use the CANONICAL cast and quotes listed at the top of this document (Grace, Ahmed, Maria, John, Rosa, Linh).
+- No likes, no comments, no social mechanics. Footer: "Every storyteller is ID-verified. Stories are published only with both participants' consent."
+
+### 7. PROFILE (edit anything, anytime)
+From avatar menu. Same fields as onboarding, all editable: topics (8 cards, live counter), languages chips, availability chips, one-line life experience, display name. "Save changes" → green "Profile updated." One line: "Your matches update automatically when your profile changes."
+
+### 8. AI MATCHING — ranked list (works from BOTH roles)
+H1 "Your matches" + one line: "Ranked by our AI — you choose." Small timestamp pill top-right: "Updated just now" with one helper line: "Your matches update automatically as you use VIOWISE — new topics, wisdom you read, and calls you enjoy all improve your ranking." (Transparent adaptive matching — always explained, never hidden.) 3-4 match cards, each: initial-avatar + verified badge, name/age, one bio line, shared-topic chips (✓ Shared), and a **violet ring showing match percentage (92% / 87% / 81% / 74%)**. Per card: "See why" expander → ONE plain sentence of reasoning. DUAL-ROLE COPY: a learner sees mentors ("You both chose Career and Migration — Grace rebuilt her career after moving countries, the journey you're starting."); a mentor sees learners ranked by "who your experience could help most" ("Sam is starting the career journey you've already lived."). Button "Schedule a call" → p9. Under the list: "A person, not an algorithm, has the final say on your connections: you."
+
+### 9. PRE-CALL CONSENT
+Header: partner avatar, "Your call with Sam", "Today, 10:00 AM". Card "Before you join — your choices": three toggle rows, one sentence each — Live subtitles ("Live translated subtitles so you both understand each other. Nothing is saved.", On) / Story capture ("AI can summarize the wisdom you share. Both must agree; you can edit or delete it.", On) / Call time limit (Off; duration select disabled until On). Reassurance strip: never recorded · report or leave anytime · only Sam can see you. "Join call with Sam" (64px → p10). "Reschedule instead" → inline green "Sam has been notified. Moved to tomorrow, 10:00 AM."
+
+### 10. VIDEO CALL (dark, full-screen, photographic)
+Header: "Call with Sam" + timer 12:32 + pills "Live subtitles: On" (toggleable) and, if consented, "Story capture on" (Sparkles). Large warm video of Sam; small self-view "You". Subtitle bar rotating every 6s (aria-live off, paused during modals): (1) 原文 "我担心我选错了专业……" / "Sam: I'm worried I chose the wrong degree..." (2) "Grace: I re-took my nursing exams at 38, in a new country." (3) 原文 "你后悔过吗？" / "Sam: Did you ever regret it?" (4) "Grace: Only the years I spent being afraid to start." Prompt card: "What advice would you give your younger self?" + New question (cycles 4) / Hide (collapses to pill). Controls 64px icon-above-label: Mute · Camera · **End call** (only red, → p11) · Report.
+**REPORT (two-step modal):** Step 1 "Report this call" — five large reason cards (radio): "Made me uncomfortable" / "Inappropriate behavior or language" / "Asked for money or personal details" / "Not who they said they were" / "Something else" (opens optional text box). One line: "Sam won't be notified." Step 2 confirm: "Your report has been received. Reviewed within 24 hours. You won't be matched with this person again." Buttons: "End call now" (red → p11) / "Continue the call".
+
+### 11. STORY CAPTURE
+Green chip "Call ended · 34 minutes". H1 "That was a wonderful conversation, Grace." Keepsake card (#F4F1FC): provenance line "Our AI wrote this summary from your conversation. Nothing has been saved yet." · title "On starting over" · Fraunces italic (Grace's CANONICAL quote): "It's never too late to begin again. I re-took my nursing exams at 38. It was hard, but it reminded me that courage grows with each small step." · "— Grace, 72". Three EQUAL 56px buttons: Edit this summary (inline textarea + Save/Cancel) / Keep it private (→ green "Saved to your private archive. Only you can see this.") / Share to Wisdom Wall (→ violet "Request sent to Sam for approval."). Consent line: "Sharing needs both of you." Below, quieter: "Schedule another call with Sam" (→ green "Request sent."). Bottom, quiet text link with flag icon: "Report a problem with this call" → same report modal, reasons + "I felt pressured to share my story".
+
+### 12. HELP
+"How VIOWISE works": three icon rows — "Get matched — our AI explains every match" / "Talk — live subtitles, never recorded" / "Share wisdom — only with both people's consent". Contact hello@viowise.example (plain text). Back button → previous page.
+
+## NAVIGATION MAP
+p1→p2(role)/p5 · p2→p3→p4→p5 · p5→p6 · app nav on p6-p9,p11,p12: Wisdom Wall→p6, AI Matching→p8, Help→p12(remembers caller), avatar→Profile p7/Sign out→p1 · p8→p9→p10→p11 · p11 publish→appears on p6 with New badge · p6 "Request a call"→confirmation (loop). Demo loop must work end to end.
+
+## ACCEPTANCE CRITERIA (verify before finishing; report evidence)
+1. Click every element on every page — zero dead interactions.
+2. Nothing under 16px; cards 16px radius, buttons 12px; Fraunces only in landing H1 + quotes; red only End call/report-danger.
+3. Full walk at Extra large text + High contrast — no broken layouts (topic grid, consent card, wall, matching rings especially).
+4. Grace's story identical on p11 and p6. Same initial-avatar per person everywhere.
+5. Background icon layer present on all light pages, never behind text, ≤6% opacity.
+6. Both demo paths clean: mentor journey (p1→2→3→4→5→6→…→11→publish→p6) and learner loop (p6 For-you → Grace's card → Request → confirmation; and p8 ranked list → See why → Schedule).
+7. The dual-consent chain is fully clickable: Grace shares on p11 → Sam's approval card appears in his view → Approve → post appears on the wall with the New badge. The mentor Requests tab Accept leads to p9.
+8. Each page's layout, spacing, and component placement visibly matches its attached mockup. Canonical quote, cast, and topic tags are used everywhere with zero drift — Grace's quote is identical on p6 and p11.
