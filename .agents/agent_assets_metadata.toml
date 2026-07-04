@@ -10,7 +10,7 @@ title = "Warm realistic video call portrait"
 id = "nnX3vU7KTN0y9fTMhcprM"
 uri = "file://artifacts/viowise/public/favicon.svg"
 type = "image"
-title = "favicon.svg (scalable master, violet bubbles)"
+title = "Favicon (violet on transparent)"
 
 [[outputs]]
 id = "unW25viPkboDpefHegQ8W"
@@ -28,7 +28,7 @@ title = "favicon-16x16.png"
 id = "DYLdzpUsPT27YKBlKFlfH"
 uri = "file://artifacts/viowise/public/apple-touch-icon.png"
 type = "image"
-title = "apple-touch-icon.png (180x180, violet square)"
+title = "apple-touch-icon.png (180x180, white on violet)"
 
 [[outputs]]
 id = "9yV3djjciUc__BzZoAHNw"
@@ -40,4 +40,16 @@ title = "app-icon-512.png (512x512, violet square)"
 id = "mxuMZIjnb1TUY7EO8TiEQ"
 uri = "file://artifacts/viowise/public/favicon-square.svg"
 type = "image"
-title = "favicon-square.svg (white bubbles on violet, master)"
+title = "Favicon square variant (white on violet, master)"
+
+[[outputs]]
+id = "eHPL6SoYSgBzx_tewCfvG"
+uri = "file://artifacts/viowise/public/logo-mark.svg"
+type = "image"
+title = "Full logo mark (SVG, two generations connected)"
+
+[[outputs]]
+id = "I-nU6EshonbO7EntH3SW5"
+uri = "file://artifacts/viowise/public/logo-mark-512.png"
+type = "image"
+title = "Full logo mark (512x512 PNG)"
