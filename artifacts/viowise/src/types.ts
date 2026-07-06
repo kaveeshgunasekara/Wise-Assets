@@ -3,6 +3,7 @@ export type Role = "mentor" | "learner";
 export interface User {
   id: string;
   name: string;
+  email: string;
   age: number;
   role: Role;
   topics: string[];

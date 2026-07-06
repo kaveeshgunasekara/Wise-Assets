@@ -2,40 +2,30 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
-import { getUserById } from "@/services/api";
+import { getUserByEmail } from "@/services/api";
 
 export default function SignIn() {
-  const { role, setRole, setUser, pendingTopics, setPendingTopics, pendingLanguages, setPendingLanguages } = useApp();
+  const { setRole, setUser } = useApp();
   const [, setLocation] = useLocation();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
-
-  // Preserve whichever role was chosen during sign-up; only default to
-  // learner/Sam if the visitor arrived directly at Sign in with no prior role.
-  const activeRole = role ?? "learner";
+  const [error, setError] = useState<string | null>(null);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setSigningIn(true);
-    const userId = activeRole === "mentor" ? "grace" : "sam";
-    const signedInUser = await getUserById(userId);
-    setRole(activeRole);
+    setError(null);
 
-    // If the visitor just came through onboarding's topic/language step,
-    // those selections live in context (no user existed yet at that point).
-    // Merge them into the real user record so the wall/matching are
-    // personalized from the very first login, then clear them.
-    if (signedInUser && (pendingTopics.length > 0 || pendingLanguages.length > 0)) {
-      setUser({
-        ...signedInUser,
-        topics: pendingTopics.length > 0 ? pendingTopics : signedInUser.topics,
-        languages: pendingLanguages.length > 0 ? pendingLanguages : signedInUser.languages,
-      });
-      setPendingTopics([]);
-      setPendingLanguages([]);
-    } else {
-      setUser(signedInUser ?? null);
+    const signedInUser = await getUserByEmail(email);
+    if (!signedInUser) {
+      setError("We couldn't find an account with that email. Try signing up instead.");
+      setSigningIn(false);
+      return;
     }
 
+    setUser(signedInUser);
+    setRole(signedInUser.role);
     setSigningIn(false);
     setLocation("/wall");
   };
@@ -59,12 +49,30 @@ export default function SignIn() {
           <form className="space-y-5" onSubmit={handleSignIn}>
             <div>
               <label className="block text-[16px] font-medium mb-2">Email</label>
-              <input type="email" required className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue={activeRole === "mentor" ? "grace@example.com" : "sam@example.com"} />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
             <div>
               <label className="block text-[16px] font-medium mb-2">Password</label>
-              <input type="password" required className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue="password123" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Your password"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
+
+            {error && (
+              <p className="text-[16px] text-destructive" role="alert">{error}</p>
+            )}
 
             <button type="submit" disabled={signingIn} className="w-full bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors mt-2 disabled:opacity-60">
               {signingIn ? "Signing in..." : "Sign in"}

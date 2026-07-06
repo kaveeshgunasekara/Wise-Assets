@@ -8,7 +8,7 @@ export default function AppNav() {
   const [location, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const initial = user?.name ? user.name.charAt(0) : "G";
+  const initial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
 
   return (
     <header className="bg-white border-b border-border sticky top-0 z-50 px-6 py-4 flex items-center justify-between">

@@ -1,8 +1,9 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AppProvider } from "@/hooks/use-app";
+import { AppProvider, useApp } from "@/hooks/use-app";
+import type { ComponentType } from "react";
 
 import Landing from "@/pages/Landing";
 import SignUp from "@/pages/SignUp";
@@ -21,6 +22,15 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
+// There's no more auto-seeded default user, so pages that assume a real
+// signed-in person (calls, profile, matching) must bounce anonymous
+// visitors back to sign-in instead of rendering with a null user.
+function RequireAuth({ component: Component }: { component: ComponentType }) {
+  const { user } = useApp();
+  if (!user) return <Redirect to="/sign-in" />;
+  return <Component />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -30,12 +40,24 @@ function Router() {
       <Route path="/select-topics" component={TopicSelection} />
       <Route path="/verified" component={Verified} />
       <Route path="/sign-in" component={SignIn} />
-      <Route path="/wall" component={WisdomWall} />
-      <Route path="/profile" component={Profile} />
-      <Route path="/matching" component={AIMatching} />
-      <Route path="/pre-call" component={PreCallConsent} />
-      <Route path="/video-call" component={VideoCall} />
-      <Route path="/story-capture" component={StoryCapture} />
+      <Route path="/wall">
+        <RequireAuth component={WisdomWall} />
+      </Route>
+      <Route path="/profile">
+        <RequireAuth component={Profile} />
+      </Route>
+      <Route path="/matching">
+        <RequireAuth component={AIMatching} />
+      </Route>
+      <Route path="/pre-call">
+        <RequireAuth component={PreCallConsent} />
+      </Route>
+      <Route path="/video-call">
+        <RequireAuth component={VideoCall} />
+      </Route>
+      <Route path="/story-capture">
+        <RequireAuth component={StoryCapture} />
+      </Route>
       <Route path="/help" component={Help} />
       <Route component={NotFound} />
     </Switch>

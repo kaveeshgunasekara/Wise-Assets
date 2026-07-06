@@ -1,0 +1,2 @@
+- [Client-mock multi-user testing](client-mock-testing.md) — mock in-memory API state lives per browser tab; test multi-user flows in one Playwright context, not separate "New Context" calls.
+- [Onboarding role state gotcha](onboarding-role-state.md) — a value set via one entry-point link's onClick (e.g. role on a landing page) silently breaks any flow that reaches the next step by another path; give the value a real input on the form itself and surface an error instead of a silent no-op guard.

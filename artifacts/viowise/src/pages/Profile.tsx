@@ -2,22 +2,20 @@ import { useState } from "react";
 import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
 import TopicSelect from "@/components/TopicSelect";
+import { updateUser } from "@/services/api";
 
 export default function Profile() {
-  const { role, user, setUser } = useApp();
+  const { user, setUser } = useApp();
   const [saved, setSaved] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(user?.topics || []);
-  const [displayName, setDisplayName] = useState(user?.name || (role === "mentor" ? "Grace" : "Sam"));
-  const [bio, setBio] = useState(user?.bio || (role === "mentor" ? "Rebuilt nursing career after moving from the Philippines." : "International student figuring it out."));
-  const [languagesInput, setLanguagesInput] = useState(
-    (user?.languages || (role === "mentor" ? ["English", "Tagalog"] : ["English", "Mandarin"])).join(", "),
-  );
+  const [displayName, setDisplayName] = useState(user?.name || "");
+  const [bio, setBio] = useState(user?.bio || "");
+  const [languagesInput, setLanguagesInput] = useState((user?.languages || []).join(", "));
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    setUser({
-      ...user,
+    const updates = {
       name: displayName,
       topics: selectedTopics,
       bio,
@@ -25,7 +23,9 @@ export default function Profile() {
         .split(",")
         .map((l) => l.trim())
         .filter(Boolean),
-    });
+    };
+    const updated = await updateUser(user.id, updates);
+    setUser(updated ?? { ...user, ...updates });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -33,6 +33,8 @@ export default function Profile() {
   const toggleTopic = (t: string) => {
     setSelectedTopics(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-pattern flex flex-col">

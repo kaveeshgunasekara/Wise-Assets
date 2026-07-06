@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
 import TopicSelect from "@/components/TopicSelect";
+import { createUser } from "@/services/api";
 
 const LANGUAGE_OPTIONS = [
   "English",
@@ -18,12 +19,28 @@ const LANGUAGE_OPTIONS = [
 ];
 
 export default function TopicSelection() {
-  const { role, pendingTopics, setPendingTopics, pendingLanguages, setPendingLanguages } = useApp();
+  const {
+    role,
+    pendingName,
+    pendingEmail,
+    pendingAge,
+    setPendingName,
+    setPendingEmail,
+    setPendingAge,
+    pendingTopics,
+    setPendingTopics,
+    pendingLanguages,
+    setPendingLanguages,
+    setUser,
+    setRole,
+  } = useApp();
   const [, setLocation] = useLocation();
   const [selectedTopics, setSelectedTopics] = useState<string[]>(pendingTopics);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(
     pendingLanguages.length > 0 ? pendingLanguages : ["English"],
   );
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleTopic = (t: string) => {
     setSelectedTopics((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -33,10 +50,38 @@ export default function TopicSelection() {
     setSelectedLanguages((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
   };
 
-  const handleContinue = (e: React.FormEvent) => {
+  const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPendingTopics(selectedTopics);
-    setPendingLanguages(selectedLanguages);
+    if (!role) {
+      // Role is normally set on the sign-up step, but a user could reach
+      // this step without one (e.g. resuming after sign-out) — surface it
+      // instead of silently doing nothing.
+      setError("We lost track of whether you're a mentor or learner. Please start sign-up again.");
+      return;
+    }
+    setError(null);
+    setCreating(true);
+    // This is the last onboarding step, so it's where we create the real
+    // account — every field collected across sign-up and this step lands
+    // in one complete user record, then the person is signed in immediately.
+    const newUser = await createUser({
+      name: pendingName || "New member",
+      email: pendingEmail,
+      age: Number(pendingAge) || 0,
+      role,
+      topics: selectedTopics,
+      languages: selectedLanguages,
+      availability: [],
+      bio: "",
+    });
+    setUser(newUser);
+    setRole(role);
+    setPendingName("");
+    setPendingEmail("");
+    setPendingAge("");
+    setPendingTopics([]);
+    setPendingLanguages([]);
+    setCreating(false);
     setLocation("/verified");
   };
 
@@ -91,13 +136,16 @@ export default function TopicSelection() {
 
             <button
               type="submit"
-              disabled={selectedTopics.length === 0}
+              disabled={selectedTopics.length === 0 || creating}
               className="w-full bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Continue
+              {creating ? "Creating your account..." : "Continue"}
             </button>
             {selectedTopics.length === 0 && (
               <p className="text-[16px] text-foreground/60 text-center">Choose at least one topic to continue.</p>
+            )}
+            {error && (
+              <p className="text-[16px] text-destructive text-center" role="alert">{error}</p>
             )}
           </form>
         </div>

@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
+import { getUserById } from "@/services/api";
+import type { User } from "@/types";
 
 export default function VideoCall() {
-  const { role, subtitlesConsent, storyCaptureConsent } = useApp();
+  const { subtitlesConsent, storyCaptureConsent, callPartnerId } = useApp();
   const [, setLocation] = useLocation();
-  const [timer, setTimer] = useState(32 * 60); // Start around 32 mins
+  const [timer, setTimer] = useState(0);
   const [subIndex, setSubIndex] = useState(0);
   const [promptIndex, setPromptIndex] = useState(0);
   const [promptVisible, setPromptVisible] = useState(true);
@@ -14,14 +16,26 @@ export default function VideoCall() {
   const [reportReason, setReportReason] = useState("");
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
+  const [partner, setPartner] = useState<User | undefined>(undefined);
 
-  const partnerName = role === "mentor" ? "Sam" : "Grace";
+  useEffect(() => {
+    if (!callPartnerId) return;
+    (async () => {
+      const found = await getUserById(callPartnerId);
+      setPartner(found);
+    })();
+  }, [callPartnerId]);
 
+  const partnerName = partner?.name ?? "your match";
+
+  // Mocked live-translated subtitle stream; each line is attributed to
+  // "me" or "partner" rather than a hardcoded name, so it labels correctly
+  // no matter who the real signed-in user and call partner are.
   const subtitles = [
-    { text: "我担心我选错了专业……", trans: "Sam: I'm worried I chose the wrong degree..." },
-    { text: "Grace: I re-took my nursing exams at 38, in a new country.", trans: "" },
-    { text: "你后悔过吗？", trans: "Sam: Did you ever regret it?" },
-    { text: "Grace: Only the years I spent being afraid to start.", trans: "" }
+    { speaker: "partner" as const, text: "我担心我选错了专业……", trans: "I'm worried I chose the wrong path..." },
+    { speaker: "me" as const, text: "It's never too late to begin again.", trans: "" },
+    { speaker: "partner" as const, text: "你后悔过吗？", trans: "Did you ever regret it?" },
+    { speaker: "me" as const, text: "Only the years I spent being afraid to start.", trans: "" },
   ];
 
   const prompts = [
@@ -77,10 +91,9 @@ export default function VideoCall() {
         </div>
       </header>
 
-      {/* Main Video Area */}
+      {/* Main Video Area (mocked stream) */}
       <div className="absolute inset-0 flex items-center justify-center">
-        {/* Placeholder for the portrait if we want to use the generated image */}
-        <img src="/sam-portrait.png" alt="Sam" className="w-full h-full object-cover opacity-80" />
+        <img src="/sam-portrait.png" alt={`${partnerName}'s video feed`} className="w-full h-full object-cover opacity-80" />
       </div>
 
       {/* Self View */}
@@ -108,7 +121,9 @@ export default function VideoCall() {
       {subtitlesConsent && (
         <div className="absolute bottom-32 left-0 right-0 flex justify-center px-6 z-20 pointer-events-none">
           <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-[16px] p-4 max-w-2xl w-full text-center shadow-2xl transition-all duration-500">
-            <p className="text-[20px] font-medium leading-relaxed">{subtitles[subIndex].text}</p>
+            <p className="text-[20px] font-medium leading-relaxed">
+              {subtitles[subIndex].speaker === "me" ? "You" : partnerName}: {subtitles[subIndex].text}
+            </p>
             {subtitles[subIndex].trans && <p className="text-[16px] text-white/70 mt-1">{subtitles[subIndex].trans}</p>}
           </div>
         </div>

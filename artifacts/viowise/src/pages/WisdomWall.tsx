@@ -4,7 +4,6 @@ import { useApp } from "@/hooks/use-app";
 import {
   getPosts,
   getUsers,
-  getUserById,
   approvePost,
   declinePost,
   createPost,
@@ -17,7 +16,7 @@ import type { Post, User, Match, CallRequest, RequestIntent } from "@/types";
 import { useLocation } from "wouter";
 
 export default function WisdomWall() {
-  const { role, user, setRole, setUser } = useApp();
+  const { role, user, setCallPartnerId } = useApp();
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState("For you");
   const [search, setSearch] = useState("");
@@ -133,6 +132,10 @@ export default function WisdomWall() {
   const handleRespond = async (req: CallRequest, action: "accept" | "decline") => {
     await respondRequest(req.id, action);
     if (action === "accept") {
+      // The person on the other side of this request becomes the active
+      // call partner for the consent screen, the call, and the story
+      // capture step that follow.
+      setCallPartnerId(req.fromId);
       setLocation("/pre-call");
     } else {
       setRequestActionMsg((prev) => ({ ...prev, [req.id]: "Request declined" }));
@@ -160,25 +163,9 @@ export default function WisdomWall() {
 
   const pendingRequestCount = myRequests.filter((r) => r.status === "pending").length;
 
-  const handleSwitchRole = async () => {
-    const nextRole = role === "mentor" ? "learner" : "mentor";
-    setRole(nextRole);
-    // The demo role switcher swaps identity too, so real, per-user data
-    // (requests, matches, posts) reflects the newly active seed account
-    // instead of staying tied to whoever originally signed in.
-    const nextUser = await getUserById(nextRole === "mentor" ? "grace" : "sam");
-    setUser(nextUser ?? null);
-  };
-
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
       <AppNav />
-
-      {/* Demo Role Switcher */}
-      <div className="bg-secondary p-2 text-center text-base font-medium border-b border-border z-10 relative">
-        Demo: Viewing as {role === "mentor" ? "Grace (Mentor)" : "Sam (Learner)"}
-        <button onClick={handleSwitchRole} className="ml-4 text-primary underline">Switch role</button>
-      </div>
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
 

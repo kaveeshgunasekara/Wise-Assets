@@ -1,24 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AppNav from "@/components/AppNav";
-import { createPost } from "@/services/api";
+import { createPost, getUserById, getStorySummary } from "@/services/api";
+import type { User } from "@/types";
 
 export default function StoryCapture() {
-  const { role, user } = useApp();
+  const { user, callPartnerId } = useApp();
   const [, setLocation] = useLocation();
   const [editing, setEditing] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [scheduleMessage, setScheduleMessage] = useState(false);
   const [reportModal, setReportModal] = useState<number>(0);
   const [reportReason, setReportReason] = useState("");
+  const [partner, setPartner] = useState<User | undefined>(undefined);
 
-  // The canonical quote for Grace
-  const [quoteText, setQuoteText] = useState("It's never too late to begin again. I re-took my nursing exams at 38. It was hard, but it reminded me that courage grows with each small step.");
-  const [originalQuoteText] = useState(quoteText);
+  const [quoteText, setQuoteText] = useState("");
+  const [originalQuoteText, setOriginalQuoteText] = useState("");
 
-  const name = role === "mentor" ? "Grace" : "Sam";
-  const partnerName = role === "mentor" ? "Sam" : "Grace";
+  useEffect(() => {
+    (async () => {
+      const summary = await getStorySummary({ userId: user?.id });
+      setQuoteText(summary);
+      setOriginalQuoteText(summary);
+    })();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!callPartnerId) return;
+    (async () => {
+      const found = await getUserById(callPartnerId);
+      setPartner(found);
+    })();
+  }, [callPartnerId]);
+
+  const partnerName = partner?.name ?? "your match";
 
   const reportReasons = [
     "Made me uncomfortable",
@@ -30,12 +46,13 @@ export default function StoryCapture() {
   ];
 
   const handleShare = async () => {
+    if (!user) return;
     // Creates a call_summary post pending the other participant's approval.
     // It shows up on their Wisdom Wall as an Approve/Decline card.
     await createPost({
-      authorId: user?.id ?? "grace",
+      authorId: user.id,
       type: "call_summary",
-      topic: "Migration",
+      topic: user.topics[0] ?? "Career",
       quote: quoteText,
       source: "call",
       status: "pending_approval",
@@ -53,10 +70,10 @@ export default function StoryCapture() {
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
         <div className="text-center mb-10">
           <span className="inline-block px-4 py-2 bg-success/10 text-success rounded-full text-base font-semibold border border-success/20 mb-6">
-            Call ended · 34 minutes
+            Call ended
           </span>
           <h1 className="text-[40px] font-serif text-foreground leading-tight">
-            That was a wonderful conversation, {name}.
+            That was a wonderful conversation{user?.name ? `, ${user.name}` : ""}.
           </h1>
         </div>
 
@@ -66,7 +83,7 @@ export default function StoryCapture() {
             Our AI wrote this summary from your conversation. Nothing has been saved yet.
           </div>
           
-          <h2 className="text-[20px] font-semibold text-foreground mb-4">On starting over</h2>
+          <h2 className="text-[20px] font-semibold text-foreground mb-4">Reflections from your call</h2>
           
           {editing ? (
             <textarea 
@@ -81,7 +98,7 @@ export default function StoryCapture() {
           )}
 
           <div className="flex items-center justify-between">
-            <div className="font-medium text-[16px] text-foreground/80">— Grace, 72</div>
+            <div className="font-medium text-[16px] text-foreground/80">— {user?.name ?? "You"}{user?.age ? `, ${user.age}` : ""}</div>
             {editing && (
               <div className="flex gap-2">
                 <button onClick={() => { setQuoteText(originalQuoteText); setEditing(false); }} className="px-4 py-2 border border-border bg-white rounded-lg text-base font-medium">Cancel</button>

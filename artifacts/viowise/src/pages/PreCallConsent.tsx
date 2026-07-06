@@ -1,14 +1,52 @@
 import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { getUserById } from "@/services/api";
+import type { User } from "@/types";
 
 export default function PreCallConsent() {
-  const { role, subtitlesConsent, setSubtitlesConsent, storyCaptureConsent, setStoryCaptureConsent } = useApp();
+  const { subtitlesConsent, setSubtitlesConsent, storyCaptureConsent, setStoryCaptureConsent, callPartnerId } = useApp();
   const [timeLimit, setTimeLimit] = useState(false);
   const [rescheduled, setRescheduled] = useState(false);
+  const [partner, setPartner] = useState<User | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
 
-  const partnerName = role === "mentor" ? "Sam" : "Grace";
+  useEffect(() => {
+    if (!callPartnerId) {
+      setLoading(false);
+      return;
+    }
+    (async () => {
+      const found = await getUserById(callPartnerId);
+      setPartner(found);
+      setLoading(false);
+    })();
+  }, [callPartnerId]);
+
+  const partnerName = partner?.name ?? "your match";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-pattern flex flex-col">
+        <AppNav />
+        <main className="flex-1 flex items-center justify-center text-foreground/60">Loading...</main>
+      </div>
+    );
+  }
+
+  if (!partner) {
+    return (
+      <div className="min-h-screen bg-pattern flex flex-col">
+        <AppNav />
+        <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-12 text-center">
+          <h1 className="text-[28px] font-serif text-foreground mb-4">No call to prepare for</h1>
+          <p className="text-[18px] text-foreground/70 mb-8">Accept a call request from your Requests tab to get started.</p>
+          <Link href="/wall" className="text-primary font-medium hover:underline">Back to Wisdom Wall</Link>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
@@ -20,7 +58,7 @@ export default function PreCallConsent() {
             {partnerName[0]}
           </div>
           <h1 className="text-[32px] font-semibold text-foreground">Your call with {partnerName}</h1>
-          <p className="text-[20px] text-foreground/70 mt-2">Today, 10:00 AM</p>
+          <p className="text-[20px] text-foreground/70 mt-2">Ready when you are</p>
         </div>
 
         <div className="bg-white p-8 rounded-[16px] card-shadow mb-8">

@@ -4,9 +4,21 @@ import { useState } from "react";
 import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function SignUp() {
-  const { role } = useApp();
+  const { role, setRole, pendingName, setPendingName, pendingEmail, setPendingEmail, pendingAge, setPendingAge } = useApp();
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [roleError, setRoleError] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!role) {
+      setRoleError(true);
+      return;
+    }
+    setRoleError(false);
+    setLocation("/verify-id");
+  };
 
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
@@ -25,25 +37,66 @@ export default function SignUp() {
           <p className="text-primary text-[16px] uppercase tracking-widest font-semibold mb-2">Step 1 of 4</p>
           <h1 className="text-[40px] font-serif text-foreground mb-6 leading-tight">Create your account</h1>
 
-          <div className="flex gap-4 mb-8">
-            <div className={`flex-1 p-4 rounded-xl border-2 ${role === "mentor" ? "border-primary bg-primary/5" : "border-border opacity-50"}`}>
+          <div className="flex gap-4 mb-2">
+            <button
+              type="button"
+              onClick={() => { setRole("mentor"); setRoleError(false); }}
+              aria-pressed={role === "mentor"}
+              className={`flex-1 p-4 rounded-xl border-2 text-left transition-colors ${role === "mentor" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+            >
               <div className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center font-serif text-xl mb-3">M</div>
               <p className="font-medium">Mentor</p>
-            </div>
-            <div className={`flex-1 p-4 rounded-xl border-2 ${role === "learner" ? "border-primary bg-primary/5" : "border-border opacity-50"}`}>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRole("learner"); setRoleError(false); }}
+              aria-pressed={role === "learner"}
+              className={`flex-1 p-4 rounded-xl border-2 text-left transition-colors ${role === "learner" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+            >
               <div className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center font-serif text-xl mb-3">L</div>
               <p className="font-medium">Learner</p>
-            </div>
+            </button>
           </div>
+          {roleError && (
+            <p className="text-[16px] text-destructive mb-6" role="alert">Please choose Mentor or Learner to continue.</p>
+          )}
+          {!roleError && <div className="mb-6" />}
 
-          <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); setLocation("/verify-id"); }}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label className="block text-[16px] font-medium mb-2">Full name</label>
-              <input type="text" required className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue={role === "mentor" ? "Grace" : "Sam"} />
+              <input
+                type="text"
+                required
+                value={pendingName}
+                onChange={(e) => setPendingName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[16px] font-medium mb-2">Age</label>
+              <input
+                type="number"
+                required
+                min={13}
+                max={120}
+                value={pendingAge}
+                onChange={(e) => setPendingAge(e.target.value)}
+                placeholder="Your age"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
             <div>
               <label className="block text-[16px] font-medium mb-2">Email</label>
-              <input type="email" required className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue={role === "mentor" ? "grace@example.com" : "sam@example.com"} />
+              <input
+                type="email"
+                required
+                value={pendingEmail}
+                onChange={(e) => setPendingEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -52,7 +105,15 @@ export default function SignUp() {
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
-              <input type={showPassword ? "text" : "password"} required className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" defaultValue="password123" />
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Choose a password"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
 
             <p className="text-[16px] text-foreground/70 py-2">

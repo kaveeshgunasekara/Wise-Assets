@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import type { Role, User } from "@/types";
-import { getUserById } from "@/services/api";
 
 interface AppContextType {
   role: Role | null;
@@ -11,9 +10,16 @@ interface AppContextType {
   setTextSize: (size: "Standard" | "Large" | "Extra large") => void;
   highContrast: boolean;
   setHighContrast: (high: boolean) => void;
-  // Onboarding-in-progress selections: captured on the topic/language step
-  // (before a real `user` object exists) and merged into the user record
-  // once they sign in. Cleared right after that merge.
+  // Onboarding-in-progress selections: captured across the sign-up and
+  // topic/language steps (before a real `user` object exists), then used
+  // to create the real account at the end of onboarding. Cleared right
+  // after that account is created.
+  pendingName: string;
+  setPendingName: (name: string) => void;
+  pendingEmail: string;
+  setPendingEmail: (email: string) => void;
+  pendingAge: string;
+  setPendingAge: (age: string) => void;
   pendingTopics: string[];
   setPendingTopics: (topics: string[]) => void;
   pendingLanguages: string[];
@@ -25,6 +31,11 @@ interface AppContextType {
   setSubtitlesConsent: (on: boolean) => void;
   storyCaptureConsent: boolean;
   setStoryCaptureConsent: (on: boolean) => void;
+  // The other participant in the active/most recent call, set when a call
+  // request is accepted so Pre-call Consent, Video Call, and Story
+  // Capture can look up the real partner instead of guessing from role.
+  callPartnerId: string | null;
+  setCallPartnerId: (id: string | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,10 +45,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [textSize, setTextSize] = useState<"Standard" | "Large" | "Extra large">("Standard");
   const [highContrast, setHighContrast] = useState(false);
+  const [pendingName, setPendingName] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [pendingAge, setPendingAge] = useState("");
   const [pendingTopics, setPendingTopics] = useState<string[]>([]);
   const [pendingLanguages, setPendingLanguages] = useState<string[]>([]);
   const [subtitlesConsent, setSubtitlesConsent] = useState(true);
   const [storyCaptureConsent, setStoryCaptureConsent] = useState(true);
+  const [callPartnerId, setCallPartnerId] = useState<string | null>(null);
 
   useEffect(() => {
     let multiplier = 1;
@@ -54,22 +69,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [highContrast]);
 
-  // This demo has no real auth/persistence: landing directly on an
-  // authenticated page (e.g. a bookmark or a fresh dev-server reload) would
-  // otherwise leave `user`/`role` null, silently breaking any action that
-  // needs a real user id (requests, matches). Seed a default learner
-  // identity (Sam) once on first mount so the app is always in a coherent
-  // "signed in as someone" demo state; real sign-up/sign-in still
-  // overwrites this immediately once the user goes through that flow.
-  useEffect(() => {
-    (async () => {
-      const defaultUser = await getUserById("sam");
-      setUser((current) => current ?? defaultUser ?? null);
-      setRole((current) => current ?? "learner");
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <AppContext.Provider
       value={{
@@ -81,6 +80,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setTextSize,
         highContrast,
         setHighContrast,
+        pendingName,
+        setPendingName,
+        pendingEmail,
+        setPendingEmail,
+        pendingAge,
+        setPendingAge,
         pendingTopics,
         setPendingTopics,
         pendingLanguages,
@@ -89,6 +94,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSubtitlesConsent,
         storyCaptureConsent,
         setStoryCaptureConsent,
+        callPartnerId,
+        setCallPartnerId,
       }}
     >
       {children}

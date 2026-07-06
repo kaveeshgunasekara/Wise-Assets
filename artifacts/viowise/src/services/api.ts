@@ -25,6 +25,7 @@ let postsStore: Post[] = [...seedPosts];
 let requestsStore: CallRequest[] = [];
 let interactionsStore: Interaction[] = [];
 
+let nextUserId = 1;
 let nextPostId = 1;
 let nextRequestId = 1;
 let nextInteractionId = 1;
@@ -35,6 +36,30 @@ export async function getUsers(): Promise<User[]> {
 
 export async function getUserById(id: string): Promise<User | undefined> {
   return delay(usersStore.find((u) => u.id === id));
+}
+
+export async function getUserByEmail(email: string): Promise<User | undefined> {
+  const normalized = email.trim().toLowerCase();
+  return delay(usersStore.find((u) => u.email.toLowerCase() === normalized));
+}
+
+// Real account creation for sign-up. Called once, after the onboarding
+// steps (role, ID verification, topics/languages) have all been
+// collected, so the user record is complete from the moment it exists.
+export async function createUser(input: Omit<User, "id" | "verified">): Promise<User> {
+  const user: User = {
+    ...input,
+    id: `user-${Date.now()}-${nextUserId++}`,
+    verified: true,
+  };
+  usersStore = [...usersStore, user];
+  return delay(user);
+}
+
+export async function updateUser(id: string, updates: Partial<Omit<User, "id">>): Promise<User | undefined> {
+  const user = usersStore.find((u) => u.id === id);
+  if (user) Object.assign(user, updates);
+  return delay(user);
 }
 
 export async function getPosts(): Promise<Post[]> {
@@ -65,6 +90,18 @@ export async function approvePost(id: string): Promise<Post | undefined> {
 export async function declinePost(id: string): Promise<void> {
   postsStore = postsStore.filter((p) => p.id !== id);
   return delay(undefined);
+}
+
+// Posts can be edited by their author but never deleted, per product
+// requirements — a story someone shared should stay attributable and
+// auditable, just correctable.
+export async function editPost(
+  id: string,
+  updates: Partial<Pick<Post, "quote" | "topic">>,
+): Promise<Post | undefined> {
+  const post = postsStore.find((p) => p.id === id);
+  if (post) Object.assign(post, updates);
+  return delay(post);
 }
 
 const TOPIC_WEIGHT = 12;
