@@ -53,7 +53,7 @@
   --foreground: #0F0D14;
   --border: #D8C8F5;
   --input: #D8C8F5;
-  --ring: #510AC9;
+  --ring: #6D28D9;
 
   --card: #ffffff;
   --card-foreground: #0F0D14;
@@ -63,9 +63,9 @@
   --popover-foreground: #0F0D14;
   --popover-border: #D8C8F5;
 
-  --primary: #510AC9;
+  --primary: #6D28D9;
   --primary-foreground: #ffffff;
-  --primary-hover: #3D07A0;
+  --primary-hover: #5B21B6;
 
   --secondary: #EDE4FF;
   --secondary-foreground: #0F0D14;
@@ -95,7 +95,7 @@ html {
 
 body {
   font-family: var(--app-font-sans);
-  background: linear-gradient(to top right, #510AC9 0%, #C49FE8 100%);
+  background: linear-gradient(to top right, #7B35D0 0%, #C9ABEE 50%, #EDE9FE 100%);
   background-attachment: fixed;
   color: var(--foreground);
   min-height: 100dvh;
@@ -108,7 +108,6 @@ body {
   --card-border: #9B6FE0;
 }
 
-/* Pages that use this class get the full gradient background + relative positioning for BgLogos overlay */
 .bg-pattern {
   background: transparent;
   position: relative;
@@ -119,7 +118,7 @@ h1.font-serif, .font-serif {
 }
 
 .card-shadow {
-  box-shadow: 0 4px 20px rgba(81, 10, 201, 0.12);
+  box-shadow: 0 4px 20px rgba(109, 40, 217, 0.10);
   border-radius: 16px;
 }
 

@@ -15,7 +15,11 @@
     <main class="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-4xl mx-auto z-10 py-20">
       <span class="text-white/80 text-[16px] uppercase tracking-widest font-semibold mb-6">CONNECTING GENERATIONS</span>
       <h1 class="text-[56px] leading-tight font-serif font-normal italic text-white mb-6">
-        Your experience is someone's answer.
+        Your experience is
+        <span class="relative inline-block">
+          <span>someone</span>
+          <span class="absolute left-0 bottom-0 w-full h-[3px] bg-white rounded-full" style="bottom: 4px;"></span>
+        </span>'s answer.
       </h1>
       <p class="text-[20px] text-white/80 mb-12 max-w-2xl">
         Real conversations between generations, guided by AI — never replaced by it.
@@ -25,7 +29,7 @@
         <router-link to="/sign-up" @click="store.setRole('mentor')" class="flex-1 bg-white text-primary text-[18px] font-medium py-4 px-6 rounded-xl hover:bg-white/90 transition-colors shadow-lg text-center">
           I want to share my wisdom
         </router-link>
-        <router-link to="/sign-up" @click="store.setRole('learner')" class="flex-1 bg-white/15 text-white text-[18px] font-medium py-4 px-6 rounded-xl border border-white/30 hover:bg-white/25 transition-colors shadow-lg text-center backdrop-blur-sm">
+        <router-link to="/sign-up" @click="store.setRole('learner')" class="flex-1 bg-white/20 text-white text-[18px] font-medium py-4 px-6 rounded-xl border border-white/40 hover:bg-white/30 transition-colors shadow-lg text-center backdrop-blur-sm">
           I want to learn from experience
         </router-link>
       </div>
