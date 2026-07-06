@@ -1,0 +1,130 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap');
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-border: var(--card-border);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover-border: var(--popover-border);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: #F7F5FB;
+  --foreground: #0F0D14;
+  --border: #E6E1F2;
+  --input: #E6E1F2;
+  --ring: #53409B;
+
+  --card: #ffffff;
+  --card-foreground: #0F0D14;
+  --card-border: #E6E1F2;
+
+  --popover: #ffffff;
+  --popover-foreground: #0F0D14;
+  --popover-border: #E6E1F2;
+
+  --primary: #53409B;
+  --primary-foreground: #ffffff;
+  --primary-hover: #3D2F7A;
+
+  --secondary: #EEEBF7;
+  --secondary-foreground: #0F0D14;
+
+  --muted: #F7F5FB;
+  --muted-foreground: #6b7280;
+
+  --accent: #8A7BC8;
+  --accent-foreground: #ffffff;
+
+  --destructive: #DC2626;
+  --destructive-foreground: #ffffff;
+
+  --success: #16A34A;
+  --success-foreground: #ffffff;
+
+  --app-font-sans: 'Inter', sans-serif;
+  --app-font-serif: 'Fraunces', serif;
+  --radius: 12px;
+  
+  --text-size-multiplier: 1;
+}
+
+html {
+  font-size: calc(16px * var(--text-size-multiplier));
+}
+
+body {
+  font-family: var(--app-font-sans);
+  background: linear-gradient(160deg, #F7F5FB, #EFEAF9);
+  color: var(--foreground);
+  min-height: 100dvh;
+}
+
+.high-contrast {
+  --foreground: #000000;
+  --border: #A098B5;
+  --input: #A098B5;
+  --card-border: #A098B5;
+  background: #EFEAF9;
+}
+
+.bg-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='340' height='340' viewBox='0 0 340 340' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%2353409B' stroke-width='1.4' opacity='0.05'%3E%3Cpath d='M40 40h72a14 14 0 0 1 14 14v36a14 14 0 0 1-14 14H88l-16 18v-18H40a14 14 0 0 1-14-14V54a14 14 0 0 1 14-14z'/%3E%3Ccircle cx='250' cy='68' r='28'/%3E%3Ccircle cx='288' cy='96' r='28'/%3E%3Cpath d='M55 250c0-42 32-74 74-74'/%3E%3Cpath d='M89 208c11-15 32-19 47-11'/%3E%3Cpath d='M100 234c9-13 28-17 41-11'/%3E%3Cpath d='M108 258c7-11 23-15 35-10'/%3E%3Cpath d='M225 230h54a11 11 0 0 1 11 11v26a11 11 0 0 1-11 11h-32l-11 13v-13h-11a11 11 0 0 1-11-11v-26a11 11 0 0 1 11-11z'/%3E%3Ccircle cx='60' cy='60' r='16'/%3E%3Cpath d='M270 190c0-30 22-52 52-52'/%3E%3Cpath d='M292 158c8-10 22-13 32-8'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 340px 340px;
+}
+
+h1.font-serif, .font-serif {
+  font-family: var(--app-font-serif);
+}
+
+.card-shadow {
+  box-shadow: 0 4px 20px rgba(83,64,155,0.10);
+  border-radius: 16px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+}

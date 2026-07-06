@@ -1,0 +1,19 @@
+Go — proceed to Stage 2. Keep everything in context/service-layer state (no backend). Edit surgically, don't regenerate working files. Apply in THIS order, and STOP for my check after items 1-3.
+
+1. Wire requests for real and make them symmetric (fixes the fake Requests tab). Remove the hardcoded Requests array. "Request a call" appears on posts AND matches for BOTH roles: learner→mentor uses intent "seek" ("I'd like your advice"), mentor→learner uses intent "offer" ("I'd like to help"). It calls requestCall() and the request appears in the RECIPIENT's real Requests tab via getRequests(). Give BOTH roles a Requests tab. Accept/Decline call respondRequest() and update the list. The request card shows the intent label.
+
+2. Add a topic + language selection step in onboarding, AFTER ID verification and BEFORE the Verified page (sign-up → ID verify → choose topics → verified → sign in). Use the 8 canonical topic cards with the same multi-select pattern as the Profile page, plus language chips. Save to the current user in context so "For you" and AI Matching are personalized from first login. Reuse the SAME topic-select component on both this step and Profile — don't duplicate it. Renumber the step indicator cleanly (e.g. Step 3 of 4).
+
+3. Wire AI Matching to the real service layer. Replace the hardcoded matchesForLearner/matchesForMentor arrays with getMatches(currentUser) (the weighted formula already in services/api.ts). Show the computed % with a driver (e.g. "92% · 3 shared topics"). Use getMatchReason() for the "see why" text, with a hardcoded fallback if it fails. Apply the SAME scoring to the wall's "For you" tab so it becomes a real ranked, role-aware feed (rank, don't hide) — visibly different from "All wisdom".
+
+[STOP HERE — let me verify items 1-3 before continuing]
+
+4. Pre-call consent toggles must affect the call. Store the 3 toggles (subtitles / story capture / time limit) in context. VideoCall reads them: hide the subtitle bar if subtitles is off; hide the "Story capture on" pill and skip the story-capture step after the call if capture is off. Remove VideoCall's independent hardcoded subtitle state.
+
+5. Add <AccessibilityControl /> to the VideoCall header so the accessibility control is present on all 12 pages including the call.
+
+6. Add direct posting on the Wall. A composer (quote + topic select) → createPost with mentor=type "wisdom", learner=type "reflection", source "direct", status "published" → appears live on the wall immediately, no approval. Each card shows a "Wisdom" or "Reflection" label.
+
+7. Make the consent toggle On/Off text visibly shown next to each toggle (currently sr-only).
+
+After all 7: run the full feature checklist as BOTH a mentor and a learner, and confirm — a new user picks topics in onboarding and lands on an already-personalized wall; a request from either role reaches the other's Requests tab; matching shows computed percentages; consent toggles change the call. Report briefly what changed per item.

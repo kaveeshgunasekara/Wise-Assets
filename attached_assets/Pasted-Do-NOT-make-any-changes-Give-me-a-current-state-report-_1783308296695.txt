@@ -1,0 +1,37 @@
+Do NOT make any changes. Give me a current-state report of the VIOWISE build so I can decide what to modify. For every claim, cite the actual file/component and value — do not guess or rubber-stamp.
+
+SECTION 1 — FLOW MAP
+List the actual routes/pages that exist and how a user moves between them. Show:
+- The onboarding path (landing → sign-up → ID → verified → sign in) and whether each step really gates the next.
+- Where sign-in lands, and whether it correctly reads the role chosen at sign-up (mentor stays mentor, learner stays learner) or hardcodes one.
+- The logged-in navigation (which nav links exist, where each goes).
+- Any page reachable but with no way back, and any dead-end.
+
+SECTION 2 — WHAT'S REAL vs MOCKED
+For each feature, state REAL (with data source) or MOCKED, with evidence:
+- Auth & profile persistence (is it saved to a database or just local state?)
+- The 10 seed users (5 mentors, 5 learners) — do they exist? where?
+- Wisdom posts — stored where? Can a user CREATE a new post live and does it persist on refresh?
+- Direct posting (mentors=Wisdom, learners=Reflection) — built? approval rules correct?
+- Call-summary post with dual approval — built and wired end to end?
+- Personalized wall order ("For you" ranks by role + topic) vs "All wisdom" unranked — actually different?
+- Tabs present (For you / All wisdom / My posts / Requests) and which roles see which.
+- Matching: rule-based % (deterministic?) + "see why" reasoning (hardcoded or real Claude?).
+- Request a call (both directions, seek/offer) → lands in recipient's Requests tab?
+- Interactions logged for future ML — any logging present?
+- Consent toggles, report flow (in-call + after), story summary — real logic? Claude or hardcoded?
+- Accessibility control on all 12 pages including the 5 pre-auth pages?
+
+SECTION 3 — DEAD CLICKS
+List every interactive element that currently does nothing (no handler / no navigation). Group by page.
+
+SECTION 4 — DATABASE & SECURITY
+- Is a database (e.g. Supabase) actually connected? Which tables exist and what columns?
+- If Claude API is used anywhere: is the key in the frontend (unsafe) or a backend proxy?
+- Does every AI call have a fallback if it fails?
+
+SECTION 5 — GAP LIST
+Compare the current build to this target and list what's MISSING or PARTIAL:
+target = everything functional EXCEPT video (mocked): real auth+profiles, 10 seed users, real posting (direct + call-summary with approval), personalized wall, rule-based matching + Claude reasoning, request-a-call both ways, interaction logging, real consent/report/story logic, accessibility on every page. Video stream, live translation, and real ID check are intentionally mocked.
+
+Rules: evidence over opinion, cite files, no rubber-stamping, and change NOTHING — report only. End with a short list of the top 8 gaps ranked by demo impact.

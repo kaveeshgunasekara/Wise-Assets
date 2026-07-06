@@ -1,0 +1,86 @@
+Work in TWO STAGES. Do STAGE 1 completely and show me the report BEFORE doing STAGE 2. Keep everything in local/context state (no backend). Edit surgically; don't regenerate working files.
+
+═══════════════════════════════════
+STAGE 1 — FEATURE COVERAGE REPORT (change nothing yet)
+═══════════════════════════════════
+Check each feature below against the ACTUAL current front-end code and mark PRESENT / PARTIAL / MISSING with evidence (file + what you found). Video streaming, live translation, and real KYC are intentionally MOCKED — for those, confirm the UI exists and behaves as a simulation (mark MOCKED-OK), don't treat them as missing.
+
+ONBOARDING & AUTH
+- Landing with two role entry buttons
+- Sign-up (role + name/email/password)
+- Government ID verification step that gates account creation (upload → verified)
+- Verified success page
+- Sign-in that reads the chosen role (mentor→Grace, learner→Sam), not hardcoded
+- Topic + language selection during onboarding (before the user reaches the wall)
+
+SEED DATA
+- 5 mentors AND 5 learners exist as data
+- At least 5 seed wisdom posts (one per mentor)
+- All use only the 8 canonical topics
+
+WISDOM WALL (home)
+- 4 tabs: For you / All wisdom / My posts / Requests
+- "For you" ranks by role + topic (different from "All wisdom")
+- Direct posting: mentors post "Wisdom", learners post "Reflection", appears live, no approval
+- Call-summary post requires approval (dual consent)
+- "Request a call" on posts, both directions (learner→mentor seek, mentor→learner offer)
+- Requests made actually appear in the recipient's Requests tab (not a static fake)
+- No likes/comments (deliberately)
+
+PROFILE
+- All fields editable and persist across navigation in-session
+
+AI MATCHING
+- Ranked list (learner sees mentors, mentor sees learners)
+- Match % shown with a computed driver (e.g. "92% · 3 shared topics"), not bare hardcoded numbers
+- "See why" reasoning per match
+- "Schedule a call" leads into the call flow
+
+PRE-CALL CONSENT
+- 3 toggles (subtitles / story capture / time limit) with On/Off text
+- Toggles actually affect the call downstream
+
+VIDEO CALL (MOCKED — confirm UI simulates, don't build real)
+- Mocked video (portrait), self-view
+- Rotating bilingual subtitles (hidden if subtitles toggle off)
+- Conversation prompt card
+- Mute/Camera visual toggles
+- End call + two-step Report with reasons
+- Accessibility control present on THIS screen too
+
+STORY CAPTURE
+- Summary shown (labeled AI-written)
+- 3 equal choices: Edit / Keep private / Share to Wall
+- Share → partner approval → appears with New badge
+- "Report a problem with this call"
+
+ACCESSIBILITY & GLOBAL
+- Aa control (text size + high contrast) on ALL 12 pages including the call
+- Nothing under 16px
+- Background line-art motif visible on all light pages
+
+ARCHITECTURE (backend-readiness)
+- All data access goes through a single service layer (not hardcoded in components)
+- Shared types defined once
+- TODO markers where Claude + backend will plug in
+
+For each: PRESENT / PARTIAL / MISSING / MOCKED-OK, with file evidence. End with a short list of anything MISSING or PARTIAL, ranked by demo impact. Then STOP and show me this report.
+
+═══════════════════════════════════
+STAGE 2 — after I approve, implement these (do NOT start until I say go)
+═══════════════════════════════════
+First apply CHANGE 1 and CHANGE 2 below, then fix any MISSING/PARTIAL items from your Stage 1 report.
+
+CHANGE 1 — Topic selection during onboarding. Add a topic + language selection step AFTER ID verification and BEFORE the Verified page (sign-up → ID verify → choose topics → verified → sign in).
+- 8 canonical topic cards (Career, Family, Migration, Health, Confidence, Study, Relationships, Resilience) using the same multi-select pattern as the Profile page (border + checkmark + tint), plus language chips.
+- Save selections to the current user in context so the wall's "For you" tab and AI Matching are personalized from the first login.
+- Reuse the SAME topic-select component on both this onboarding step and the Profile page — don't duplicate it.
+- Update the step indicator to renumber cleanly (e.g. Step 3 of 4).
+
+CHANGE 2 — Both roles can request a call (symmetric).
+- "Request a call" appears on posts and matches for BOTH roles.
+- Learner → mentor uses intent "seek" ("I'd like your advice"); mentor → learner uses intent "offer" ("I'd like to help").
+- Creates a real request in shared state that appears in the RECIPIENT's Requests tab with Accept/Decline.
+- Both mentor and learner have a Requests tab; the request card shows the intent label.
+
+Then fix the Stage 1 gaps, prioritizing by the demo-impact ranking you produced. After all changes, confirm: a new user picks topics in onboarding and lands on an already-personalized wall; a request from either role reaches the other's Requests tab; and re-run the full feature checklist as both a mentor and a learner.

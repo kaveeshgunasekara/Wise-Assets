@@ -1,18 +1,16 @@
 export type Role = "mentor" | "learner";
-export type TextSize = "Standard" | "Large" | "Extra large";
 
 export interface User {
   id: string;
   name: string;
-  email: string;
+  age: number;
   role: Role;
-  age?: number;
-  bio?: string;
-  credential?: string;
   topics: string[];
   languages: string[];
-  availability?: string;
-  createdAt: string;
+  availability: string[];
+  bio: string;
+  credential?: string;
+  verified: boolean;
 }
 
 export type PostType = "wisdom" | "reflection" | "call_summary";
@@ -24,11 +22,9 @@ export interface Post {
   authorId: string;
   type: PostType;
   quote: string;
-  title?: string;
   topic: string;
   source: PostSource;
   status: PostStatus;
-  partnerId?: string;
   isNew?: boolean;
   createdAt: string;
 }
@@ -40,10 +36,26 @@ export interface CallRequest {
   id: string;
   fromId: string;
   toId: string;
-  intent: RequestIntent;
-  topic?: string;
   postId?: string;
+  intent: RequestIntent;
   status: RequestStatus;
+  topic?: string;
+  createdAt: string;
+}
+
+export type InteractionEventType =
+  | "match_shown"
+  | "accepted"
+  | "declined"
+  | "post_viewed"
+  | "call_requested";
+
+export interface Interaction {
+  id: string;
+  userId: string;
+  eventType: InteractionEventType;
+  targetId: string;
+  score?: number;
   createdAt: string;
 }
 
@@ -53,14 +65,3 @@ export interface Match {
   sharedTopics: string[];
   sharedLanguages: string[];
 }
-
-export const TOPICS = [
-  "Career",
-  "Family",
-  "Migration",
-  "Health",
-  "Confidence",
-  "Study",
-  "Relationships",
-  "Resilience",
-];

@@ -1,247 +1,179 @@
-import type { User, Post, CallRequest, Match, RequestIntent, PostType, PostStatus, PostSource } from "@/types";
+import { seedUsers, seedPosts } from "@/data/seed";
+import type {
+  User,
+  Post,
+  CallRequest,
+  Interaction,
+  Match,
+  RequestIntent,
+} from "@/types";
 
-const DELAY_MS = 200;
-const STORAGE_KEY = "viowise:db:v1";
+// Mock service layer. Every export here is async and returns data from
+// in-memory state seeded from src/data/seed.ts. This is the ONLY place
+// that touches "data" — components should never hardcode users/posts.
+// TODO(backend): swap the bodies of these functions for real network
+// calls (Supabase/REST) once a backend exists. Callers never change.
 
-interface Db {
-  users: User[];
-  posts: Post[];
-  requests: CallRequest[];
+const NETWORK_DELAY_MS = 200;
+
+function delay<T>(value: T): Promise<T> {
+  return new Promise((resolve) => setTimeout(() => resolve(value), NETWORK_DELAY_MS));
 }
 
-function loadDb(): Db {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Db>;
-      return {
-        users: parsed.users ?? [],
-        posts: parsed.posts ?? [],
-        requests: parsed.requests ?? [],
-      };
-    }
-  } catch {
-    // ignore corrupt storage, start fresh
-  }
-  return { users: [], posts: [], requests: [] };
-}
+let usersStore: User[] = [...seedUsers];
+let postsStore: Post[] = [...seedPosts];
+let requestsStore: CallRequest[] = [];
+let interactionsStore: Interaction[] = [];
 
-function saveDb() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  } catch {
-    // storage unavailable (e.g. private mode) — data stays in-memory only
-  }
-}
-
-const db: Db = loadDb();
-
-function delay(ms = DELAY_MS) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-}
-
-// ---------------------------------------------------------------------------
-// Users
-// ---------------------------------------------------------------------------
+let nextPostId = 1;
+let nextRequestId = 1;
+let nextInteractionId = 1;
 
 export async function getUsers(): Promise<User[]> {
-  await delay();
-  return [...db.users];
+  return delay([...usersStore]);
 }
 
-export async function getUserById(id: string | null | undefined): Promise<User | null> {
-  await delay();
-  if (!id) return null;
-  return db.users.find((u) => u.id === id) ?? null;
+export async function getUserById(id: string): Promise<User | undefined> {
+  return delay(usersStore.find((u) => u.id === id));
 }
-
-export async function getUserByEmail(email: string): Promise<User | null> {
-  await delay();
-  const normalized = email.trim().toLowerCase();
-  return db.users.find((u) => u.email.toLowerCase() === normalized) ?? null;
-}
-
-export async function createUser(input: Omit<User, "id" | "createdAt">): Promise<User> {
-  await delay();
-  const user: User = { ...input, id: uid(), createdAt: new Date().toISOString() };
-  db.users.push(user);
-  saveDb();
-  return user;
-}
-
-export async function updateUser(id: string, patch: Partial<Omit<User, "id" | "createdAt">>): Promise<User | null> {
-  await delay();
-  const user = db.users.find((u) => u.id === id);
-  if (!user) return null;
-  Object.assign(user, patch);
-  saveDb();
-  return user;
-}
-
-// ---------------------------------------------------------------------------
-// Posts
-// ---------------------------------------------------------------------------
 
 export async function getPosts(): Promise<Post[]> {
-  await delay();
-  return [...db.posts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return delay([...postsStore]);
 }
 
-export async function createPost(input: {
-  authorId: string;
-  type: PostType;
-  quote: string;
-  topic: string;
-  title?: string;
-  source: PostSource;
-  status: PostStatus;
-  partnerId?: string;
-}): Promise<Post> {
-  await delay();
+export async function createPost(
+  input: Omit<Post, "id" | "createdAt">,
+): Promise<Post> {
   const post: Post = {
-    id: uid(),
-    createdAt: new Date().toISOString(),
-    isNew: false,
     ...input,
+    id: `post-${Date.now()}-${nextPostId++}`,
+    createdAt: new Date().toISOString(),
   };
-  db.posts.unshift(post);
-  saveDb();
-  return post;
+  postsStore = [post, ...postsStore];
+  return delay(post);
 }
 
-export async function editPost(id: string, patch: Partial<Pick<Post, "quote" | "topic" | "title">>): Promise<Post | null> {
-  await delay();
-  const post = db.posts.find((p) => p.id === id);
-  if (!post) return null;
-  Object.assign(post, patch);
-  saveDb();
-  return post;
-}
-
-export async function approvePost(id: string): Promise<Post | null> {
-  await delay();
-  const post = db.posts.find((p) => p.id === id);
-  if (!post) return null;
-  post.status = "published";
-  post.isNew = true;
-  saveDb();
-  return post;
+export async function approvePost(id: string): Promise<Post | undefined> {
+  const post = postsStore.find((p) => p.id === id);
+  if (post) {
+    post.status = "published";
+    post.isNew = true;
+  }
+  return delay(post);
 }
 
 export async function declinePost(id: string): Promise<void> {
-  await delay();
-  db.posts = db.posts.filter((p) => p.id !== id);
-  saveDb();
+  postsStore = postsStore.filter((p) => p.id !== id);
+  return delay(undefined);
 }
 
-// ---------------------------------------------------------------------------
-// Matching
-// ---------------------------------------------------------------------------
+const TOPIC_WEIGHT = 12;
+const LANGUAGE_WEIGHT = 8;
+const BASE_PERCENT = 55;
 
-function intersect(a: string[], b: string[]): string[] {
-  const bSet = new Set(b.map((x) => x.toLowerCase()));
-  return a.filter((x) => bSet.has(x.toLowerCase()));
-}
-
+// Deterministic, rule-based score: shared topics + shared languages,
+// normalized to a percentage. Same two users always produce the same %.
 export async function getMatches(userId: string): Promise<Match[]> {
-  await delay();
-  const user = db.users.find((u) => u.id === userId);
-  if (!user) return [];
+  const current = usersStore.find((u) => u.id === userId);
+  if (!current) return delay([]);
 
-  const opposite = db.users.filter((u) => u.id !== userId && u.role !== user.role);
+  const pool = usersStore.filter((u) => u.role !== current.role);
 
-  const scored = opposite.map((candidate) => {
-    const sharedTopics = intersect(user.topics ?? [], candidate.topics ?? []);
-    const sharedLanguages = intersect(user.languages ?? [], candidate.languages ?? []);
+  const maxPossible =
+    current.topics.length * TOPIC_WEIGHT + current.languages.length * LANGUAGE_WEIGHT;
 
-    const topicPool = new Set([...(user.topics ?? []), ...(candidate.topics ?? [])]).size || 1;
-    const languagePool = new Set([...(user.languages ?? []), ...(candidate.languages ?? [])]).size || 1;
-
-    const topicScore = sharedTopics.length / topicPool;
-    const languageScore = sharedLanguages.length / languagePool;
-
-    // Weighted: shared topics matter most, shared language is a smaller boost.
-    const raw = topicScore * 0.8 + languageScore * 0.2;
-    const percent = Math.max(40, Math.min(99, Math.round(raw * 100)));
-
-    return { user: candidate, percent, sharedTopics, sharedLanguages };
+  const results: Match[] = pool.map((u) => {
+    const sharedTopics = current.topics.filter((t) => u.topics.includes(t));
+    const sharedLanguages = current.languages.filter((l) => u.languages.includes(l));
+    const raw = sharedTopics.length * TOPIC_WEIGHT + sharedLanguages.length * LANGUAGE_WEIGHT;
+    const percent =
+      maxPossible > 0
+        ? Math.min(99, Math.round(BASE_PERCENT + (raw / maxPossible) * (99 - BASE_PERCENT)))
+        : BASE_PERCENT;
+    return { user: u, percent, sharedTopics, sharedLanguages };
   });
 
-  return scored.sort((a, b) => b.percent - a.percent);
+  results.sort((a, b) => b.percent - a.percent);
+  return delay(results);
 }
 
-// TODO(backend): Replace with a Claude-generated, personalized match explanation.
-export async function getMatchReason(viewer: User, candidate: User): Promise<string> {
-  await delay(80);
-  const shared = intersect(viewer.topics ?? [], candidate.topics ?? []);
-  if (shared.length === 0) {
-    return `${candidate.name} brings a different perspective that could still be valuable to you.`;
+// TODO(backend): replace this templated sentence with a real Claude call
+// (via a backend proxy — never call an LLM key from the frontend).
+export async function getMatchReason(aId: string, bId: string): Promise<string> {
+  const a = usersStore.find((u) => u.id === aId);
+  const b = usersStore.find((u) => u.id === bId);
+  if (!a || !b) return delay("");
+
+  const sharedTopics = a.topics.filter((t) => b.topics.includes(t));
+  const sharedLanguages = a.languages.filter((l) => b.languages.includes(l));
+
+  let reason: string;
+  if (sharedTopics.length > 0) {
+    reason = `You both share ${sharedTopics.join(" and ")} — ${b.name}'s experience lines up closely with what you're navigating now.`;
+  } else if (sharedLanguages.length > 0) {
+    reason = `You share a language with ${b.name}, which can make it easier to open up about what's on your mind.`;
+  } else {
+    reason = `${b.name}'s background offers a different perspective that could still be valuable for your journey.`;
   }
-  const topicsList = shared.join(" and ");
-  return `You both selected ${topicsList} — ${candidate.name}'s experience there lines up closely with what you're navigating.`;
+  return delay(reason);
 }
 
-// ---------------------------------------------------------------------------
-// Requests
-// ---------------------------------------------------------------------------
+// TODO(backend): replace with a real Claude-generated summary of the
+// actual conversation transcript once calls are real.
+export async function getStorySummary(_context?: {
+  userId?: string;
+  topic?: string;
+}): Promise<string> {
+  return delay(
+    "It's never too late to begin again. I re-took my nursing exams at 38. It was hard, but it reminded me that courage grows with each small step.",
+  );
+}
 
 export async function requestCall(
   fromId: string,
   toId: string,
-  intent: RequestIntent,
-  opts?: { postId?: string; topic?: string }
+  opts?: { postId?: string; intent?: RequestIntent; topic?: string },
 ): Promise<CallRequest> {
-  await delay();
   const request: CallRequest = {
-    id: uid(),
+    id: `req-${Date.now()}-${nextRequestId++}`,
     fromId,
     toId,
-    intent,
     postId: opts?.postId,
-    topic: opts?.topic,
+    intent: opts?.intent ?? "seek",
     status: "pending",
+    topic: opts?.topic,
     createdAt: new Date().toISOString(),
   };
-  db.requests.push(request);
-  saveDb();
-  return request;
+  requestsStore = [request, ...requestsStore];
+  return delay(request);
 }
 
 export async function getRequests(userId: string): Promise<CallRequest[]> {
-  await delay();
-  return db.requests
-    .filter((r) => r.toId === userId || r.fromId === userId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return delay(requestsStore.filter((r) => r.toId === userId));
 }
 
-export async function respondRequest(id: string, action: "accept" | "decline"): Promise<CallRequest | null> {
-  await delay();
-  const request = db.requests.find((r) => r.id === id);
-  if (!request) return null;
-  request.status = action === "accept" ? "accepted" : "declined";
-  saveDb();
-  return request;
+export async function respondRequest(
+  id: string,
+  action: "accept" | "decline",
+): Promise<CallRequest | undefined> {
+  const request = requestsStore.find((r) => r.id === id);
+  if (request) {
+    request.status = action === "accept" ? "accepted" : "declined";
+  }
+  return delay(request);
 }
 
-// ---------------------------------------------------------------------------
-// Story capture / analytics
-// ---------------------------------------------------------------------------
-
-// TODO(backend): Replace with a real AI-generated summary of the call transcript.
-export async function getStorySummary(topic?: string): Promise<{ title: string; quote: string }> {
-  await delay(400);
-  return {
-    title: topic ? `On ${topic.toLowerCase()}` : "A moment worth remembering",
-    quote:
-      "There was a moment in this conversation that felt worth holding onto. Edit this summary to capture it in your own words before sharing or keeping it private.",
+// TODO(backend): persist interactions server-side for future ML-driven
+// matching once a backend exists. Logged locally for now.
+export async function logInteraction(
+  event: Omit<Interaction, "id" | "createdAt">,
+): Promise<Interaction> {
+  const interaction: Interaction = {
+    ...event,
+    id: `int-${Date.now()}-${nextInteractionId++}`,
+    createdAt: new Date().toISOString(),
   };
-}
-
-// TODO(backend): Send interaction events to the backend for analytics/ranking.
-export function logInteraction(event: string, data?: Record<string, unknown>) {
-  console.log("[interaction]", event, data ?? {});
+  interactionsStore = [interaction, ...interactionsStore];
+  console.log("[viowise] interaction logged", interaction);
+  return delay(interaction);
 }
