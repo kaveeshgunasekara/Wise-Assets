@@ -1,11 +1,8 @@
 <template>
-  <header class="bg-white border-b border-border sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+  <header class="bg-white border-b border-border sticky top-0 z-50 px-6 py-3 flex items-center justify-between">
     <div class="flex items-center gap-8">
-      <router-link to="/wall" class="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-        VIOWISE
+      <router-link to="/wall" class="flex items-center gap-2">
+        <img src="/logo.png" alt="Viowise" class="h-10 w-auto" />
       </router-link>
       <nav class="hidden md:flex gap-6">
         <router-link to="/wall" :class="['font-medium', route.path === '/wall' ? 'text-primary' : 'text-foreground/70 hover:text-foreground']">Wisdom Wall</router-link>

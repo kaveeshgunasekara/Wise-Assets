@@ -1,16 +1,14 @@
 <template>
   <div class="min-h-screen bg-pattern flex flex-col">
-    <header class="px-6 py-4 flex items-center justify-between">
-      <router-link to="/" class="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-        VIOWISE
+    <BgLogos />
+    <header class="relative px-6 py-4 flex items-center justify-between z-20">
+      <router-link to="/" class="flex items-center gap-2">
+        <img src="/logo.png" alt="Viowise" class="h-11 w-auto" />
       </router-link>
       <AccessibilityControl />
     </header>
 
-    <main class="flex-1 flex items-center justify-center px-6 py-12">
+    <main class="flex-1 flex items-center justify-center px-6 py-12 relative z-10">
       <div class="bg-white p-8 rounded-[16px] card-shadow w-full max-w-md">
         <p class="text-primary text-[16px] uppercase tracking-widest font-semibold mb-2">Step 2 of 3</p>
         <h1 class="text-[40px] font-serif text-foreground mb-4 leading-tight">Verify your identity</h1>
@@ -78,6 +76,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import AccessibilityControl from "@/components/AccessibilityControl.vue";
+import BgLogos from "@/components/BgLogos.vue";
 
 const router = useRouter();
 const verifying = ref(false);
