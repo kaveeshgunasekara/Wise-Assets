@@ -16,21 +16,28 @@
         Your matches update automatically as you use VIOWISE — new topics, wisdom you read, and calls you enjoy all improve your ranking.
       </p>
 
-      <div class="space-y-6 mb-12">
-        <div v-for="m in matches" :key="m.id" class="bg-white p-6 rounded-[16px] card-shadow border border-border">
+      <div v-if="loading" class="text-center py-20 text-foreground/60">Finding your matches...</div>
+
+      <div v-else-if="matches.length === 0" class="text-center py-20 bg-white rounded-[16px] border border-border">
+        <p class="text-[18px] text-foreground/60">No matches yet — complete your profile to find people.</p>
+        <router-link to="/profile" class="mt-4 inline-block text-primary font-medium hover:underline">Update your profile</router-link>
+      </div>
+
+      <div v-else class="space-y-6 mb-12">
+        <div v-for="m in matches" :key="m.user.id" class="bg-white p-6 rounded-[16px] card-shadow border border-border">
           <div class="flex flex-col sm:flex-row gap-6 justify-between items-start">
             <div class="flex gap-4">
               <div class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-2xl relative shrink-0">
-                {{ m.name[0] }}
+                {{ m.user.name[0] }}
                 <div class="absolute -bottom-1 -right-1 bg-success text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white" title="ID Verified">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                 </div>
               </div>
               <div>
-                <h2 class="text-[20px] font-semibold">{{ m.name }}, {{ m.age }}</h2>
-                <p class="text-[16px] text-foreground/80 mt-1">{{ m.bio }}</p>
+                <h2 class="text-[20px] font-semibold">{{ m.user.name }}<span v-if="m.user.age">, {{ m.user.age }}</span></h2>
+                <p v-if="m.user.bio" class="text-[16px] text-foreground/80 mt-1">{{ m.user.bio }}</p>
                 <div class="flex flex-wrap gap-2 mt-3">
-                  <span v-for="t in m.shared" :key="t" class="px-3 py-1 bg-[#F4F1FC] border border-[#C5BCDF] text-primary rounded-full text-base font-medium flex items-center gap-1">
+                  <span v-for="t in m.sharedTopics" :key="t" class="px-3 py-1 bg-[#F4F1FC] border border-[#C5BCDF] text-primary rounded-full text-base font-medium flex items-center gap-1">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                     Shared {{ t }}
                   </span>
@@ -47,22 +54,25 @@
                   </svg>
                 </div>
               </div>
-              <router-link to="/pre-call" class="w-full text-center px-6 py-3 bg-primary text-white rounded-[12px] text-[16px] font-medium hover:bg-primary-hover transition-colors">
-                Schedule a call
-              </router-link>
+              <button
+                @click="handleRequestCall(m.user.id)"
+                :class="['w-full text-center px-6 py-3 rounded-[12px] text-[16px] font-medium transition-colors', alreadyRequested(m.user.id) ? 'bg-success/10 text-success' : 'bg-primary text-white hover:bg-primary-hover']"
+              >
+                {{ alreadyRequested(m.user.id) ? 'Request sent' : (store.role === 'mentor' ? 'Offer a call' : 'Request a call') }}
+              </button>
             </div>
           </div>
 
           <div class="mt-6 pt-4 border-t border-border">
             <button
-              @click="expanded = expanded === m.id ? null : m.id"
+              @click="toggleExpanded(m.user.id)"
               class="flex items-center gap-2 text-primary font-medium text-[16px] hover:underline"
-              :aria-expanded="expanded === m.id"
+              :aria-expanded="expanded === m.user.id"
             >
-              See why {{ expanded === m.id ? '↑' : '↓' }}
+              See why {{ expanded === m.user.id ? '↑' : '↓' }}
             </button>
-            <p v-if="expanded === m.id" class="mt-3 text-[16px] text-foreground/80 bg-secondary/50 p-4 rounded-[12px]">
-              {{ m.reason }}
+            <p v-if="expanded === m.user.id" class="mt-3 text-[16px] text-foreground/80 bg-secondary/50 p-4 rounded-[12px]">
+              {{ reasons[m.user.id] ?? "Loading..." }}
             </p>
           </div>
         </div>
@@ -76,22 +86,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import { store } from "@/store";
+import * as api from "@/services/api";
+import type { Match, CallRequest } from "@/types";
 import AppNav from "@/components/AppNav.vue";
 
 const expanded = ref<string | null>(null);
+const matches = ref<Match[]>([]);
+const requests = ref<CallRequest[]>([]);
+const loading = ref(true);
+const reasons = reactive<Record<string, string>>({});
 
-const matchesForLearner = [
-  { id: "1", name: "Grace", age: 72, bio: "Rebuilt nursing career after moving from the Philippines.", shared: ["Career", "Migration"], percent: 92, reason: "You both chose Career and Migration — Grace rebuilt her career after moving countries, the journey you're starting." },
-  { id: "2", name: "Rosa", age: 66, bio: "Retired professor who learned how to learn late.", shared: ["Study", "Resilience"], percent: 87, reason: "You're dealing with academic stress; Rosa has extensive experience turning academic failures into growth." },
-  { id: "3", name: "Ahmed", age: 68, bio: "Engineer who changed careers at 45.", shared: ["Career"], percent: 81, reason: "Ahmed understands the pressure of high-stakes career decisions." },
-];
+onMounted(async () => {
+  if (!store.user) {
+    loading.value = false;
+    return;
+  }
+  const [m, r] = await Promise.all([api.getMatches(store.user.id), api.getRequests(store.user.id)]);
+  matches.value = m;
+  requests.value = r;
+  loading.value = false;
+});
 
-const matchesForMentor = [
-  { id: "4", name: "Sam", age: 21, bio: "International student dealing with career anxiety.", shared: ["Career", "Migration"], percent: 92, reason: "Sam is starting the career journey you've already lived, dealing with identical pressures." },
-  { id: "5", name: "Priya", age: 23, bio: "Recent graduate figuring out her next career move.", shared: ["Career"], percent: 85, reason: "Your experience starting over later in life provides perfect perspective for her early-career doubts." },
-];
+async function toggleExpanded(userId: string) {
+  if (expanded.value === userId) {
+    expanded.value = null;
+    return;
+  }
+  expanded.value = userId;
+  if (!reasons[userId] && store.user) {
+    const match = matches.value.find((m) => m.user.id === userId);
+    if (match) {
+      reasons[userId] = await api.getMatchReason(store.user, match.user);
+    }
+  }
+}
 
-const matches = computed(() => store.role === "mentor" ? matchesForMentor : matchesForLearner);
+function alreadyRequested(userId: string): boolean {
+  return requests.value.some((r) => r.fromId === store.user?.id && r.toId === userId && r.status === "pending");
+}
+
+async function handleRequestCall(userId: string) {
+  if (!store.user || alreadyRequested(userId)) return;
+  const intent = store.role === "learner" ? "seek" : "offer";
+  await api.requestCall(store.user.id, userId, intent);
+  requests.value = await api.getRequests(store.user.id);
+}
 </script>

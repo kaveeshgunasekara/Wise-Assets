@@ -15,15 +15,17 @@
         <form class="space-y-5" @submit.prevent="handleSignIn">
           <div>
             <label class="block text-[16px] font-medium mb-2">Email</label>
-            <input type="email" required class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" :value="activeRole === 'mentor' ? 'grace@example.com' : 'sam@example.com'" />
+            <input type="email" required v-model="email" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
           </div>
           <div>
             <label class="block text-[16px] font-medium mb-2">Password</label>
-            <input type="password" required class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" value="password123" />
+            <input type="password" required v-model="password" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
           </div>
 
-          <button type="submit" class="w-full bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors mt-2">
-            Sign in
+          <p v-if="error" class="text-[16px] text-destructive font-medium">{{ error }}</p>
+
+          <button type="submit" :disabled="loading" class="w-full bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors mt-2 disabled:opacity-60">
+            {{ loading ? "Signing in..." : "Sign in" }}
           </button>
         </form>
 
@@ -36,23 +38,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { store } from "@/store";
+import { getUserByEmail } from "@/services/api";
 import AccessibilityControl from "@/components/AccessibilityControl.vue";
 import BgLogos from "@/components/BgLogos.vue";
 
 const router = useRouter();
-const activeRole = computed(() => store.role ?? "learner");
+const email = ref("");
+const password = ref("");
+const error = ref("");
+const loading = ref(false);
 
-function handleSignIn() {
-  if (activeRole.value === "mentor") {
-    store.setRole("mentor");
-    store.setUser({ name: "Grace", age: 72, topics: ["Career", "Migration", "Resilience"] });
-  } else {
-    store.setRole("learner");
-    store.setUser({ name: "Sam", age: 21, topics: ["Career", "Study"] });
+async function handleSignIn() {
+  error.value = "";
+  loading.value = true;
+  const user = await getUserByEmail(email.value);
+  loading.value = false;
+  if (!user) {
+    error.value = "We couldn't find an account with that email. Sign up to create one.";
+    return;
   }
+  store.setUser(user);
+  store.setRole(user.role);
   router.push("/wall");
 }
 </script>

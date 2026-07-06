@@ -49,7 +49,7 @@ const route = useRoute();
 const router = useRouter();
 const menuOpen = ref(false);
 
-const initial = computed(() => store.user?.name ? store.user.name.charAt(0) : "G");
+const initial = computed(() => store.user?.name ? store.user.name.charAt(0) : "?");
 
 function signOut() {
   store.setUser(null);

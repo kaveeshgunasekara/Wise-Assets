@@ -10,7 +10,7 @@
 
     <main class="flex-1 flex items-center justify-center px-6 py-12 relative z-10">
       <div class="bg-white p-8 rounded-[16px] card-shadow w-full max-w-md">
-        <p class="text-primary text-[16px] uppercase tracking-widest font-semibold mb-2">Step 1 of 3</p>
+        <p class="text-primary text-[16px] uppercase tracking-widest font-semibold mb-2">Step 1 of 4</p>
         <h1 class="text-[40px] font-serif text-foreground mb-6 leading-tight">Create your account</h1>
 
         <div class="flex gap-4 mb-8">
@@ -24,14 +24,14 @@
           </div>
         </div>
 
-        <form class="space-y-5" @submit.prevent="router.push('/verify-id')">
+        <form class="space-y-5" @submit.prevent="handleContinue">
           <div>
             <label class="block text-[16px] font-medium mb-2">Full name</label>
-            <input type="text" required class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" :value="store.role === 'mentor' ? 'Grace' : 'Sam'" />
+            <input type="text" required v-model="name" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
           </div>
           <div>
             <label class="block text-[16px] font-medium mb-2">Email</label>
-            <input type="email" required class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" :value="store.role === 'mentor' ? 'grace@example.com' : 'sam@example.com'" />
+            <input type="email" required v-model="email" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
           </div>
           <div>
             <div class="flex justify-between items-center mb-2">
@@ -40,15 +40,17 @@
                 {{ showPassword ? 'Hide' : 'Show' }}
               </button>
             </div>
-            <input :type="showPassword ? 'text' : 'password'" required class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" value="password123" />
+            <input :type="showPassword ? 'text' : 'password'" required v-model="password" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
           </div>
 
           <p class="text-[16px] text-foreground/70 py-2">
             A government-issued ID is required to join.
           </p>
 
+          <p v-if="error" class="text-[16px] text-destructive font-medium">{{ error }}</p>
+
           <button type="submit" class="w-full bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors">
-            Continue to verification
+            Continue
           </button>
         </form>
 
@@ -69,4 +71,27 @@ import BgLogos from "@/components/BgLogos.vue";
 
 const router = useRouter();
 const showPassword = ref(false);
+const name = ref("");
+const email = ref("");
+const password = ref("");
+const error = ref("");
+
+if (!store.role) {
+  store.setRole("learner");
+}
+
+function handleContinue() {
+  if (!name.value.trim() || !email.value.trim() || !password.value) {
+    error.value = "Please fill in every field.";
+    return;
+  }
+  store.setPendingSignup({
+    name: name.value.trim(),
+    email: email.value.trim(),
+    role: store.role ?? "learner",
+    topics: [],
+    languages: [],
+  });
+  router.push("/topics");
+}
 </script>

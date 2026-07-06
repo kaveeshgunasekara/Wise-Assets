@@ -8,22 +8,24 @@
         <div class="text-[18px] opacity-80 font-mono mt-1 drop-shadow-md">{{ formatTime(timer) }}</div>
       </div>
       <div class="flex flex-col items-end gap-2">
-        <button
-          @click="subtitlesOn = !subtitlesOn"
-          :class="['px-3 py-1.5 rounded-full text-base font-medium border', subtitlesOn ? 'bg-white/20 border-white/30' : 'bg-black/40 border-white/10']"
-        >
+        <div class="[&_button]:bg-white/10 [&_button]:border-white/20">
+          <AccessibilityControl />
+        </div>
+        <div :class="['px-3 py-1.5 rounded-full text-base font-medium border', subtitlesOn ? 'bg-white/20 border-white/30' : 'bg-black/40 border-white/10']">
           Live subtitles: {{ subtitlesOn ? 'On' : 'Off' }}
-        </button>
-        <div class="px-3 py-1.5 bg-[#A594E8]/20 border border-[#A594E8]/40 text-[#A594E8] rounded-full text-base font-medium flex items-center gap-1.5">
+        </div>
+        <div :class="['px-3 py-1.5 rounded-full text-base font-medium flex items-center gap-1.5 border', storyCaptureOn ? 'bg-[#A594E8]/20 border-[#A594E8]/40 text-[#A594E8]' : 'bg-black/40 border-white/10 text-white/70']">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-          Story capture on
+          Story capture {{ storyCaptureOn ? 'on' : 'off' }}
         </div>
       </div>
     </header>
 
     <!-- Main Video Area -->
-    <div class="absolute inset-0 flex items-center justify-center">
-      <img src="/sam-portrait.png" alt="Sam" class="w-full h-full object-cover opacity-80" />
+    <div class="absolute inset-0 flex items-center justify-center bg-[#2A2438]">
+      <div class="w-40 h-40 rounded-full bg-white/10 flex items-center justify-center font-serif text-6xl text-white/70">
+        {{ partnerName[0] }}
+      </div>
     </div>
 
     <!-- Self View -->
@@ -46,8 +48,7 @@
     <!-- Subtitles Area -->
     <div v-if="subtitlesOn" class="absolute bottom-32 left-0 right-0 flex justify-center px-6 z-20 pointer-events-none">
       <div class="bg-black/60 backdrop-blur-md border border-white/10 rounded-[16px] p-4 max-w-2xl w-full text-center shadow-2xl transition-all duration-500">
-        <p class="text-[20px] font-medium leading-relaxed">{{ subtitles[subIndex].text }}</p>
-        <p v-if="subtitles[subIndex].trans" class="text-[16px] text-white/70 mt-1">{{ subtitles[subIndex].trans }}</p>
+        <p class="text-[20px] font-medium leading-relaxed">{{ subtitleLines[subIndex] }}</p>
       </div>
     </div>
 
@@ -130,12 +131,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { store } from "@/store";
+import { getUserById, logInteraction } from "@/services/api";
+import type { User } from "@/types";
+import AccessibilityControl from "@/components/AccessibilityControl.vue";
 
 const router = useRouter();
-const timer = ref(32 * 60);
-const subtitlesOn = ref(true);
+const route = useRoute();
+const timer = ref(0);
 const subIndex = ref(0);
 const promptIndex = ref(0);
 const promptVisible = ref(true);
@@ -143,15 +147,20 @@ const reportModal = ref(0);
 const reportReason = ref("");
 const muted = ref(false);
 const cameraOff = ref(false);
+const partner = ref<User | null>(null);
 
-const partnerName = computed(() => store.role === "mentor" ? "Sam" : "Grace");
+const subtitlesOn = computed(() => store.subtitlesConsent);
+const storyCaptureOn = computed(() => store.storyCaptureConsent);
 
-const subtitles = [
-  { text: "我担心我选错了专业……", trans: "Sam: I'm worried I chose the wrong degree..." },
-  { text: "Grace: I re-took my nursing exams at 38, in a new country.", trans: "" },
-  { text: "你后悔过吗？", trans: "Sam: Did you ever regret it?" },
-  { text: "Grace: Only the years I spent being afraid to start.", trans: "" },
-];
+const partnerId = computed(() => (typeof route.query.with === "string" ? route.query.with : ""));
+const partnerName = computed(() => partner.value?.name ?? "your conversation partner");
+
+const subtitleLines = computed(() => [
+  `${partnerName.value}: Thank you for taking the time to talk with me today.`,
+  `You: I'm glad we connected — I've been looking forward to this.`,
+  `${partnerName.value}: What's been on your mind lately?`,
+  `You: There's something I've been trying to work through.`,
+]);
 
 const prompts = [
   "What advice would you give your younger self?",
@@ -169,17 +178,26 @@ function formatTime(seconds: number) {
 }
 
 function handleEndCall() {
-  router.push("/story-capture");
+  logInteraction("call_ended", { partnerId: partnerId.value, durationSeconds: timer.value });
+  if (store.storyCaptureConsent) {
+    router.push(`/story-capture?with=${partnerId.value}&duration=${encodeURIComponent(formatTime(timer.value))}`);
+  } else {
+    router.push("/wall");
+  }
 }
 
 let timerInterval: ReturnType<typeof setInterval>;
 let subInterval: ReturnType<typeof setInterval>;
 
-onMounted(() => {
+onMounted(async () => {
+  if (partnerId.value) {
+    partner.value = await getUserById(partnerId.value);
+  }
+  logInteraction("call_started", { partnerId: partnerId.value });
   timerInterval = setInterval(() => { timer.value += 1; }, 1000);
   subInterval = setInterval(() => {
     if (reportModal.value === 0) {
-      subIndex.value = (subIndex.value + 1) % subtitles.length;
+      subIndex.value = (subIndex.value + 1) % subtitleLines.value.length;
     }
   }, 6000);
 });

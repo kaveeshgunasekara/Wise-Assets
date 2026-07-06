@@ -5,6 +5,7 @@ import "./style.css";
 
 import Landing from "./pages/Landing.vue";
 import SignUp from "./pages/SignUp.vue";
+import OnboardingTopics from "./pages/OnboardingTopics.vue";
 import IdVerification from "./pages/IdVerification.vue";
 import Verified from "./pages/Verified.vue";
 import SignIn from "./pages/SignIn.vue";
@@ -22,6 +23,7 @@ const router = createRouter({
   routes: [
     { path: "/", component: Landing },
     { path: "/sign-up", component: SignUp },
+    { path: "/topics", component: OnboardingTopics },
     { path: "/verify-id", component: IdVerification },
     { path: "/verified", component: Verified },
     { path: "/sign-in", component: SignIn },

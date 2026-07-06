@@ -8,7 +8,7 @@
           {{ partnerName[0] }}
         </div>
         <h1 class="text-[32px] font-semibold text-foreground">Your call with {{ partnerName }}</h1>
-        <p class="text-[20px] text-foreground/70 mt-2">Today, 10:00 AM</p>
+        <p class="text-[20px] text-foreground/70 mt-2">Ready when you are</p>
       </div>
 
       <div class="bg-white p-8 rounded-[16px] card-shadow mb-8">
@@ -22,14 +22,14 @@
               <p class="text-[16px] text-foreground/70">Live translated subtitles so you both understand each other. Nothing is saved.</p>
             </div>
             <button
-              @click="subtitles = !subtitles"
+              @click="toggleSubtitles"
               :class="['w-14 h-8 shrink-0 rounded-full p-1 transition-colors relative', subtitles ? 'bg-primary' : 'bg-foreground/20']"
               aria-label="Toggle live subtitles"
             >
               <div :class="['w-6 h-6 bg-white rounded-full transition-transform', subtitles ? 'translate-x-6' : 'translate-x-0']" />
-              <span class="sr-only">{{ subtitles ? 'On' : 'Off' }}</span>
             </button>
           </div>
+          <p class="text-[16px] font-semibold -mt-4 ml-1" :class="subtitles ? 'text-primary' : 'text-foreground/50'">{{ subtitles ? 'On' : 'Off' }}</p>
 
           <!-- Story Capture -->
           <div :class="['flex items-start justify-between p-4 rounded-[12px] border-2 transition-colors', capture ? 'border-primary/30 bg-primary/5' : 'border-border']">
@@ -38,14 +38,14 @@
               <p class="text-[16px] text-foreground/70">AI can summarize the wisdom you share. Both must agree; you can edit or delete it.</p>
             </div>
             <button
-              @click="capture = !capture"
+              @click="toggleCapture"
               :class="['w-14 h-8 shrink-0 rounded-full p-1 transition-colors relative', capture ? 'bg-primary' : 'bg-foreground/20']"
               aria-label="Toggle story capture"
             >
               <div :class="['w-6 h-6 bg-white rounded-full transition-transform', capture ? 'translate-x-6' : 'translate-x-0']" />
-              <span class="sr-only">{{ capture ? 'On' : 'Off' }}</span>
             </button>
           </div>
+          <p class="text-[16px] font-semibold -mt-4 ml-1" :class="capture ? 'text-primary' : 'text-foreground/50'">{{ capture ? 'On' : 'Off' }}</p>
 
           <!-- Time Limit -->
           <div :class="['flex flex-col sm:flex-row sm:items-start justify-between p-4 rounded-[12px] border-2 transition-colors', timeLimit ? 'border-primary/30 bg-primary/5' : 'border-border']">
@@ -63,13 +63,13 @@
               aria-label="Toggle call time limit"
             >
               <div :class="['w-6 h-6 bg-white rounded-full transition-transform', timeLimit ? 'translate-x-6' : 'translate-x-0']" />
-              <span class="sr-only">{{ timeLimit ? 'On' : 'Off' }}</span>
             </button>
           </div>
+          <p class="text-[16px] font-semibold -mt-4 ml-1" :class="timeLimit ? 'text-primary' : 'text-foreground/50'">{{ timeLimit ? 'On' : 'Off' }}</p>
         </div>
       </div>
 
-      <div class="flex justify-center gap-6 text-[16px] text-foreground/60 mb-10 px-4 py-3 bg-secondary rounded-[12px] font-medium">
+      <div class="flex justify-center gap-6 text-[16px] text-foreground/60 mb-10 px-4 py-3 bg-secondary rounded-[12px] font-medium flex-wrap">
         <span class="flex items-center gap-2">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
           never recorded
@@ -81,7 +81,7 @@
       </div>
 
       <div class="flex flex-col gap-4">
-        <router-link to="/video-call" class="w-full bg-primary text-white h-[64px] rounded-[12px] text-[20px] font-semibold hover:bg-primary-hover transition-colors shadow-lg flex items-center justify-center gap-3">
+        <router-link :to="joinCallLink" class="w-full bg-primary text-white h-[64px] rounded-[12px] text-[20px] font-semibold hover:bg-primary-hover transition-colors shadow-lg flex items-center justify-center gap-3">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
           Join call with {{ partnerName }}
         </router-link>
@@ -99,14 +99,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { store } from "@/store";
+import { getUserById } from "@/services/api";
+import type { User } from "@/types";
 import AppNav from "@/components/AppNav.vue";
 
-const subtitles = ref(true);
-const capture = ref(true);
+const route = useRoute();
+const partner = ref<User | null>(null);
 const timeLimit = ref(false);
 const rescheduled = ref(false);
 
-const partnerName = computed(() => store.role === "mentor" ? "Sam" : "Grace");
+const subtitles = computed(() => store.subtitlesConsent);
+const capture = computed(() => store.storyCaptureConsent);
+
+function toggleSubtitles() {
+  store.setSubtitlesConsent(!store.subtitlesConsent);
+}
+function toggleCapture() {
+  store.setStoryCaptureConsent(!store.storyCaptureConsent);
+}
+
+const partnerId = computed(() => (typeof route.query.with === "string" ? route.query.with : ""));
+const partnerName = computed(() => partner.value?.name ?? "your conversation partner");
+const joinCallLink = computed(() => `/video-call?with=${partnerId.value}`);
+
+onMounted(async () => {
+  if (partnerId.value) {
+    partner.value = await getUserById(partnerId.value);
+  }
+});
 </script>

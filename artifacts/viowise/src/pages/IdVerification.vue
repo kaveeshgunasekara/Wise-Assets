@@ -10,7 +10,7 @@
 
     <main class="flex-1 flex items-center justify-center px-6 py-12 relative z-10">
       <div class="bg-white p-8 rounded-[16px] card-shadow w-full max-w-md">
-        <p class="text-primary text-[16px] uppercase tracking-widest font-semibold mb-2">Step 2 of 3</p>
+        <p class="text-primary text-[16px] uppercase tracking-widest font-semibold mb-2">Step 3 of 4</p>
         <h1 class="text-[40px] font-serif text-foreground mb-4 leading-tight">Verify your identity</h1>
 
         <p class="text-[18px] text-foreground/80 mb-8">
@@ -75,6 +75,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { store } from "@/store";
+import { createUser } from "@/services/api";
 import AccessibilityControl from "@/components/AccessibilityControl.vue";
 import BgLogos from "@/components/BgLogos.vue";
 
@@ -82,11 +84,19 @@ const router = useRouter();
 const verifying = ref(false);
 const uploaded = ref(false);
 
-function handleSubmit() {
-  if (!uploaded.value) return;
+if (!store.pendingSignup) {
+  router.replace("/sign-up");
+}
+
+async function handleSubmit() {
+  if (!uploaded.value || !store.pendingSignup) return;
   verifying.value = true;
-  setTimeout(() => {
-    router.push("/verified");
-  }, 1500);
+  const { name, email, role, topics, languages } = store.pendingSignup;
+  const user = await createUser({ name, email, role, topics, languages });
+  // Auto sign-in: the newly verified user is immediately logged in.
+  store.setUser(user);
+  store.setRole(user.role);
+  store.setPendingSignup(null);
+  router.push("/verified");
 }
 </script>

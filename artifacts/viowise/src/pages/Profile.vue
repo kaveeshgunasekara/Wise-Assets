@@ -4,7 +4,11 @@
     <main class="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
       <h1 class="text-[40px] font-serif text-foreground mb-8">Your Profile</h1>
 
-      <form @submit.prevent="handleSave" class="space-y-10">
+      <div v-if="!store.user" class="text-center py-20 bg-white rounded-[16px] border border-border">
+        <p class="text-[18px] text-foreground/60">Sign in to view and edit your profile.</p>
+      </div>
+
+      <form v-else @submit.prevent="handleSave" class="space-y-10">
         <div class="bg-white p-8 rounded-[16px] card-shadow">
           <h2 class="text-[20px] font-semibold mb-6">
             Topics
@@ -33,17 +37,21 @@
           </div>
           <div>
             <label class="block text-[16px] font-medium mb-2">One-line life experience</label>
-            <input type="text" v-model="bio" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
+            <input type="text" v-model="bio" placeholder="A short line describing your experience" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
           </div>
           <div>
             <label class="block text-[16px] font-medium mb-2">Languages (comma separated)</label>
-            <input type="text" v-model="languages" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
+            <input type="text" v-model="languagesInput" placeholder="English, Mandarin" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
+          </div>
+          <div>
+            <label class="block text-[16px] font-medium mb-2">Availability</label>
+            <input type="text" v-model="availability" placeholder="e.g. Weekday evenings" class="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
           </div>
         </div>
 
         <div class="flex items-center gap-6">
-          <button type="submit" class="px-8 bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors">
-            Save changes
+          <button type="submit" :disabled="saving" class="px-8 bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors disabled:opacity-60">
+            {{ saving ? "Saving..." : "Save changes" }}
           </button>
           <span v-if="saved" class="text-success font-medium flex items-center gap-2" aria-live="polite">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -61,34 +69,49 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { store } from "@/store";
+import { TOPICS } from "@/types";
+import { updateUser } from "@/services/api";
 import AppNav from "@/components/AppNav.vue";
 
-const topics = ["Career", "Family", "Migration", "Health", "Confidence", "Study", "Relationships", "Resilience"];
+const topics = TOPICS;
 
 const saved = ref(false);
-const selectedTopics = ref<string[]>(store.user?.topics || []);
-const displayName = ref(store.user?.name || (store.role === "mentor" ? "Grace" : "Sam"));
-const bio = ref(store.user?.bio || (store.role === "mentor" ? "Rebuilt nursing career after moving from the Philippines." : "International student figuring it out."));
-const languages = ref(store.user?.languages || (store.role === "mentor" ? "English, Tagalog" : "English, Mandarin"));
+const saving = ref(false);
+const selectedTopics = ref<string[]>(store.user?.topics ?? []);
+const displayName = ref(store.user?.name ?? "");
+const bio = ref(store.user?.bio ?? "");
+const languagesInput = ref((store.user?.languages ?? []).join(", "));
+const availability = ref(store.user?.availability ?? "");
 
 function toggleTopic(t: string) {
   if (selectedTopics.value.includes(t)) {
-    selectedTopics.value = selectedTopics.value.filter(x => x !== t);
+    selectedTopics.value = selectedTopics.value.filter((x) => x !== t);
   } else {
     selectedTopics.value = [...selectedTopics.value, t];
   }
 }
 
-function handleSave() {
-  store.setUser({
-    ...store.user,
-    name: displayName.value,
-    age: store.user?.age ?? (store.role === "mentor" ? 72 : 21),
+async function handleSave() {
+  if (!store.user) return;
+  saving.value = true;
+  const languages = languagesInput.value
+    .split(",")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const updated = await updateUser(store.user.id, {
+    name: displayName.value.trim() || store.user.name,
     topics: selectedTopics.value,
     bio: bio.value,
-    languages: languages.value,
+    languages,
+    availability: availability.value,
   });
+  if (updated) store.setUser(updated);
+
+  saving.value = false;
   saved.value = true;
-  setTimeout(() => { saved.value = false; }, 3000);
+  setTimeout(() => {
+    saved.value = false;
+  }, 3000);
 }
 </script>
