@@ -1,37 +1,57 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
 import TopicSelect from "@/components/TopicSelect";
-import { updateUser } from "@/services/api";
+import { getUserById, updateUser } from "@/services/api";
 
 export default function Profile() {
   const { user, setUser } = useApp();
+
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(user?.topics ?? []);
+  const [displayName, setDisplayName] = useState(user?.name ?? "");
+  const [bio, setBio] = useState(user?.bio ?? "");
+  const [languagesInput, setLanguagesInput] = useState((user?.languages ?? []).join(", "));
+  const [availabilityInput, setAvailabilityInput] = useState((user?.availability ?? []).join(", "));
   const [saved, setSaved] = useState(false);
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(user?.topics || []);
-  const [displayName, setDisplayName] = useState(user?.name || "");
-  const [bio, setBio] = useState(user?.bio || "");
-  const [languagesInput, setLanguagesInput] = useState((user?.languages || []).join(", "));
+  const [saving, setSaving] = useState(false);
+
+  // Fetch the latest profile from the DB on mount so the form always shows
+  // the current saved state — not just what was last in React context.
+  useEffect(() => {
+    if (!user?.id) return;
+    getUserById(user.id).then((fresh) => {
+      if (!fresh) return;
+      setUser(fresh);
+      setSelectedTopics(fresh.topics ?? []);
+      setDisplayName(fresh.name ?? "");
+      setBio(fresh.bio ?? "");
+      setLanguagesInput((fresh.languages ?? []).join(", "));
+      setAvailabilityInput((fresh.availability ?? []).join(", "));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    setSaving(true);
+
     const updates = {
       name: displayName,
       topics: selectedTopics,
       bio,
-      languages: languagesInput
-        .split(",")
-        .map((l) => l.trim())
-        .filter(Boolean),
+      languages: languagesInput.split(",").map((l) => l.trim()).filter(Boolean),
+      availability: availabilityInput.split(",").map((a) => a.trim()).filter(Boolean),
     };
     const updated = await updateUser(user.id, updates);
     setUser(updated ?? { ...user, ...updates });
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
 
   const toggleTopic = (t: string) => {
-    setSelectedTopics(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+    setSelectedTopics((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
   };
 
   if (!user) return null;
@@ -41,7 +61,7 @@ export default function Profile() {
       <AppNav />
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
         <h1 className="text-[40px] font-serif text-foreground mb-8">Your Profile</h1>
-        
+
         <form onSubmit={handleSave} className="space-y-10">
           <div className="bg-white p-8 rounded-[16px] card-shadow">
             <TopicSelect selected={selectedTopics} onToggle={toggleTopic} />
@@ -50,21 +70,52 @@ export default function Profile() {
           <div className="bg-white p-8 rounded-[16px] card-shadow space-y-6">
             <div>
               <label className="block text-[16px] font-medium mb-2">Display name</label>
-              <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
             <div>
               <label className="block text-[16px] font-medium mb-2">One-line life experience</label>
-              <input type="text" value={bio} onChange={(e) => setBio(e.target.value)} className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
+              <input
+                type="text"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="e.g. Retired nurse, 35 years in paediatrics"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
             <div>
-              <label className="block text-[16px] font-medium mb-2">Languages (comma separated)</label>
-              <input type="text" value={languagesInput} onChange={(e) => setLanguagesInput(e.target.value)} className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none" />
+              <label className="block text-[16px] font-medium mb-2">Languages (comma-separated)</label>
+              <input
+                type="text"
+                value={languagesInput}
+                onChange={(e) => setLanguagesInput(e.target.value)}
+                placeholder="e.g. English, Mandarin"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[16px] font-medium mb-2">Availability (comma-separated)</label>
+              <input
+                type="text"
+                value={availabilityInput}
+                onChange={(e) => setAvailabilityInput(e.target.value)}
+                placeholder="e.g. Weekday mornings, Weekend afternoons"
+                className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
+              />
             </div>
           </div>
 
           <div className="flex items-center gap-6">
-            <button type="submit" className="px-8 bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors">
-              Save changes
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-8 bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors disabled:opacity-60"
+            >
+              {saving ? "Saving…" : "Save changes"}
             </button>
             {saved && (
               <span className="text-success font-medium flex items-center gap-2" aria-live="polite">

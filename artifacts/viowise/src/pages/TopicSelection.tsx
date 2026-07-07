@@ -4,7 +4,7 @@ import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
 import TopicSelect from "@/components/TopicSelect";
 import { supabase } from "@/services/supabase";
-import { getUserById } from "@/services/api";
+import { getUserById, updateUser } from "@/services/api";
 
 const LANGUAGE_OPTIONS = [
   "English",
@@ -93,12 +93,21 @@ export default function TopicSelection() {
       return;
     }
 
-    // The trigger has already inserted the profile row. Fetch it now so
-    // RequireAuth sees a real user before we navigate to /verified → /wall.
+    // The trigger has already inserted the profile row with name + role.
+    // Fetch it to confirm existence, then immediately update it with the
+    // rest of the onboarding selections so the full profile is persisted
+    // before we navigate anywhere.
     const profile = await getUserById(authData.user!.id);
     if (profile) {
-      setUser(profile);
-      setRole(profile.role);
+      const updated = await updateUser(authData.user!.id, {
+        topics: selectedTopics,
+        languages: selectedLanguages,
+        age: Number(pendingAge) || 0,
+        availability: [],
+        bio: "",
+      });
+      setUser(updated ?? profile);
+      setRole((updated ?? profile).role);
     }
 
     // Clear all onboarding state (password first — don't hold it longer than needed).
