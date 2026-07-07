@@ -486,7 +486,8 @@ export default function WisdomWall() {
                           {author?.credential && <div className="text-foreground/60 text-base">{author.credential}</div>}
                         </div>
                       </div>
-                      {author?.id !== user?.id && (
+                      {/* Only show call button for cross-role pairs — never same-role or self */}
+                      {author?.id !== user?.id && author?.role !== user?.role && (
                         <button
                           onClick={() => handleRequestCall(post, author)}
                           disabled={alreadySent}
@@ -497,7 +498,7 @@ export default function WisdomWall() {
                         </button>
                       )}
                     </div>
-                    {alreadySent && (
+                    {alreadySent && author?.role !== user?.role && (
                       <div className="mt-4 text-base text-success font-medium text-right">
                         {author?.name} will respond within 2 days.
                       </div>

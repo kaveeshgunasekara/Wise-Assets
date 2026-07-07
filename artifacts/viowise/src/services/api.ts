@@ -284,6 +284,19 @@ export async function requestCall(
   toId: string,
   opts?: { postId?: string; intent?: RequestIntent },
 ): Promise<CallRequest> {
+  // Safety net: reject same-role requests even if the UI guard is bypassed.
+  const { data: roleRows } = await supabase
+    .from("users")
+    .select("id, role")
+    .in("id", [fromId, toId]);
+  if (roleRows && roleRows.length === 2) {
+    const a = roleRows.find((r: { id: string; role: string }) => r.id === fromId);
+    const b = roleRows.find((r: { id: string; role: string }) => r.id === toId);
+    if (a && b && a.role === b.role) {
+      throw new Error("[api] requestCall: same-role call requests are not allowed");
+    }
+  }
+
   const row = {
     from_id: fromId,
     to_id: toId,
