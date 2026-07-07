@@ -1,0 +1,32 @@
+Do NOT change any code. Give me a DETAILED end-to-end flow report of how the VIOWISE website currently works, based on the ACTUAL code (cite files). Cover BOTH the learner journey and the mentor journey separately, and be specific about what data is read/written to Supabase at each step.
+
+PART 1 — SHARED ONBOARDING (both roles)
+Walk through, step by step, what happens from landing to being logged in:
+- Landing → role selection: what gets set?
+- Sign-up form: what's collected, where is it held before account creation?
+- ID verification step: what does it actually do?
+- Topic/language selection: what's collected?
+- Account creation: what supabase.auth call fires, what metadata is passed, what does the DB trigger create, and does the rest of the profile (topics, languages, bio) get saved? If so, where/when?
+- After signup: where does the user land, and is their full profile now in the users table?
+
+PART 2 — LEARNER JOURNEY (signed in as a learner)
+- What does the learner see on the Wisdom Wall by default (which tab, what posts, how are they ordered/filtered)?
+- Can the learner post? What type (reflection?), and does it save to the posts table?
+- AI Matching: who does the learner see (mentors?), how is the % computed, what does "see why" show, is it from the DB?
+- Request a call: what happens when a learner requests, what row is written, who receives it?
+- Requests tab: what does the learner see there?
+- The full path: learner requests a call → what happens next screen by screen (pre-call, call, story capture)?
+
+PART 3 — MENTOR JOURNEY (signed in as a mentor)
+- Same walkthrough from the mentor's side: default wall view, posting (wisdom?), matching (do they see learners?), requests (receiving vs sending), accept/decline flow.
+- What's different for a mentor vs a learner in the UI and data?
+
+PART 4 — THE CONNECTION LOOP (both sides together)
+- Trace one complete cycle: mentor posts wisdom → learner sees it → learner requests a call → mentor receives it in Requests → mentor accepts → what happens for both users after acceptance.
+- Where does the (mocked) video call and story capture fit, and what's real vs simulated there?
+
+PART 5 — DATA SUMMARY
+- For each user action, which Supabase table gets read or written.
+- Which features currently use the real database vs which are still mock/local/hardcoded.
+
+Report clearly, cite files, and flag any step that is broken, incomplete, or still using mock data. Do NOT change anything — report only.
