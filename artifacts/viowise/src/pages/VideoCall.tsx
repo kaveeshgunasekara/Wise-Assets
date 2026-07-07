@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
-import { getUserById, reportUser } from "@/services/api";
+import { getUserById, reportUser, completeRequest } from "@/services/api";
 import type { User } from "@/types";
 
 export default function VideoCall() {
@@ -74,10 +74,11 @@ export default function VideoCall() {
   };
 
   const handleEndCall = () => {
-    // Honor the story-capture consent decided on the Pre-call Consent
-    // screen: if either person opted out, there is no summary to review,
-    // so skip straight back to the Wisdom Wall instead of showing the
-    // capture step.
+    // Fire-and-forget: mark the accepted request between these two users as
+    // completed so the Requests tab no longer shows a stale "Join call" button.
+    if (user && callPartnerId) {
+      completeRequest(user.id, callPartnerId).catch(() => {});
+    }
     setLocation(storyCaptureConsent ? "/story-capture" : "/wall");
   };
 

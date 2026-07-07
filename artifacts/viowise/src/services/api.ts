@@ -334,6 +334,19 @@ export async function respondRequest(
   // MOCK: const request = requestsStore.find((r) => r.id === id); if (request) request.status = action === "accept" ? "accepted" : "declined"; return request;
 }
 
+// Marks the accepted request between two users as completed once their call ends.
+// Matches in either direction (caller may be from_id or to_id).
+export async function completeRequest(userId: string, partnerId: string): Promise<void> {
+  const { error } = await supabase
+    .from("requests")
+    .update({ status: "completed" })
+    .eq("status", "accepted")
+    .or(
+      `and(from_id.eq.${userId},to_id.eq.${partnerId}),and(from_id.eq.${partnerId},to_id.eq.${userId})`,
+    );
+  if (error) console.error("[api] completeRequest:", error.message);
+}
+
 // ─── 6. Reports ───────────────────────────────────────────────────────────
 
 export async function reportUser(

@@ -298,7 +298,11 @@ export default function WisdomWall() {
                       </div>
                       {req.status !== "pending" ? (
                         <p className="text-foreground/70 font-medium px-4 py-2">
-                          {requestActionMsg[req.id] ?? (req.status === "accepted" ? "Accepted" : "Declined")}
+                          {requestActionMsg[req.id] ?? (
+                            req.status === "accepted" ? "Accepted" :
+                            req.status === "completed" ? "Call completed" :
+                            "Declined"
+                          )}
                         </p>
                       ) : (
                         <div className="flex gap-3">
@@ -318,50 +322,82 @@ export default function WisdomWall() {
             {/* ── Sent ── */}
             <section>
               <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Sent</h2>
-              <div className="space-y-4">
-                {sentRequests.map(req => {
-                  const toUser = users.find(u => u.id === req.toId);
-                  const isAccepted = req.status === "accepted";
-                  const isDeclined = req.status === "declined";
-                  return (
-                    <div
-                      key={req.id}
-                      className={`p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{toUser?.name?.[0] ?? "?"}</div>
-                        <div>
-                          <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
-                          <p className="text-foreground/70">
-                            {req.intent === "seek" ? "You requested their advice" : "You offered to help"}
-                          </p>
-                        </div>
-                      </div>
-                      {isAccepted ? (
-                        <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
-                          <span className="flex items-center gap-1.5 text-[#2D8B4E] font-semibold text-[16px]">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Accepted
-                          </span>
-                          <button
-                            onClick={() => { setCallPartnerId(req.toId); setLocation("/pre-call"); }}
-                            className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover"
+              {(() => {
+                const active = sentRequests.filter(r => r.status !== "completed");
+                const past   = sentRequests.filter(r => r.status === "completed");
+                return (
+                  <>
+                    <div className="space-y-4">
+                      {active.map(req => {
+                        const toUser = users.find(u => u.id === req.toId);
+                        const isAccepted = req.status === "accepted";
+                        const isDeclined = req.status === "declined";
+                        return (
+                          <div
+                            key={req.id}
+                            className={`p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
                           >
-                            Join call
-                          </button>
-                        </div>
-                      ) : isDeclined ? (
-                        <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/50 font-medium text-[15px]">Declined</span>
-                      ) : (
-                        <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px]">Awaiting response</span>
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{toUser?.name?.[0] ?? "?"}</div>
+                              <div>
+                                <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
+                                <p className="text-foreground/70">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
+                              </div>
+                            </div>
+                            {isAccepted ? (
+                              <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+                                <span className="flex items-center gap-1.5 text-[#2D8B4E] font-semibold text-[16px]">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  Accepted
+                                </span>
+                                <button
+                                  onClick={() => { setCallPartnerId(req.toId); setLocation("/pre-call"); }}
+                                  className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover"
+                                >
+                                  Join call
+                                </button>
+                              </div>
+                            ) : isDeclined ? (
+                              <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/50 font-medium text-[15px]">Declined</span>
+                            ) : (
+                              <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px]">Awaiting response</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {active.length === 0 && past.length === 0 && (
+                        <p className="text-foreground/60 py-4">No requests sent yet.</p>
                       )}
                     </div>
-                  );
-                })}
-                {sentRequests.length === 0 && (
-                  <p className="text-foreground/60 py-4">No requests sent yet.</p>
-                )}
-              </div>
+
+                    {past.length > 0 && (
+                      <div className="mt-8">
+                        <h3 className="text-[14px] font-semibold text-foreground/40 uppercase tracking-widest mb-3">Past calls</h3>
+                        <div className="space-y-3">
+                          {past.map(req => {
+                            const toUser = users.find(u => u.id === req.toId);
+                            return (
+                              <div key={req.id} className="p-5 rounded-[16px] border border-border bg-secondary/30 flex flex-col sm:flex-row gap-4 justify-between items-center opacity-60">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 rounded-full bg-foreground/10 text-foreground/50 flex items-center justify-center font-serif text-lg">{toUser?.name?.[0] ?? "?"}</div>
+                                  <div>
+                                    <h3 className="font-semibold text-[16px] text-foreground/70">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
+                                    <p className="text-foreground/50 text-base">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
+                                  </div>
+                                </div>
+                                <span className="flex items-center gap-1.5 text-foreground/50 font-medium text-[15px]">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  Call completed
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </section>
 
           </div>

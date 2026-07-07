@@ -31,7 +31,7 @@ export interface Post {
 }
 
 export type RequestIntent = "seek" | "offer";
-export type RequestStatus = "pending" | "accepted" | "declined";
+export type RequestStatus = "pending" | "accepted" | "declined" | "completed";
 
 export interface CallRequest {
   id: string;
