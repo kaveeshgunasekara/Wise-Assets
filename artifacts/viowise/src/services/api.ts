@@ -42,7 +42,6 @@ type DbRequest = {
   post_id: string | null;
   intent: CallRequest["intent"];
   status: CallRequest["status"];
-  topic: string | null;
   created_at: string;
 };
 
@@ -79,7 +78,6 @@ function toRequest(r: DbRequest): CallRequest {
     ...(r.post_id != null && { postId: r.post_id }),
     intent: r.intent,
     status: r.status,
-    ...(r.topic != null && { topic: r.topic }),
     createdAt: r.created_at,
   };
 }
@@ -115,16 +113,13 @@ export async function getUserById(id: string): Promise<User | undefined> {
   // MOCK: return usersStore.find((u) => u.id === id);
 }
 
-export async function getUserByEmail(email: string): Promise<User | undefined> {
-  const normalized = email.trim().toLowerCase();
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .ilike("email", normalized)
-    .maybeSingle();
-  if (error) { console.error("[api] getUserByEmail:", error.message); return undefined; }
-  return (data as User) ?? undefined;
-  // MOCK: return usersStore.find((u) => u.email.toLowerCase() === normalized);
+// getUserByEmail is intentionally non-operational: the `email` column does not
+// exist on public.users (email lives in auth.users, which is managed by Supabase
+// Auth). Sign-in uses supabase.auth.signInWithPassword instead of this function.
+// Kept as a stub so any accidental call fails loudly rather than silently.
+export async function getUserByEmail(_email: string): Promise<User | undefined> {
+  console.error("[api] getUserByEmail: email is not a column on public.users — use supabase.auth.signInWithPassword for authentication.");
+  return undefined;
 }
 
 // createUser was removed: the handle_new_user() Supabase DB trigger auto-inserts
@@ -136,9 +131,13 @@ export async function updateUser(
   id: string,
   updates: Partial<Omit<User, "id">>,
 ): Promise<User | undefined> {
+  // Strip fields that do not exist as columns in public.users.
+  // email lives in auth.users (managed by Supabase Auth).
+  // credential is not a column in this project's schema.
+  const { email: _e, credential: _c, ...safeUpdates } = updates as Record<string, unknown>;
   const { data, error } = await supabase
     .from("users")
-    .update(updates)
+    .update(safeUpdates)
     .eq("id", id)
     .select()
     .single();
