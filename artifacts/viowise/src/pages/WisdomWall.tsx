@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
 import {
@@ -95,23 +95,26 @@ export default function WisdomWall() {
     await refreshPosts();
   };
 
-  // Real, per-author match percent (only populated for opposite-role
-  // authors, since getMatches only ranks across roles).
-  const matchPercentByAuthor = useMemo(() => {
-    const map: Record<string, number> = {};
-    matches.forEach((m) => {
-      map[m.user.id] = m.percent;
-    });
-    return map;
-  }, [matches]);
-
-  const relevanceScore = (post: Post) => {
+  // Score each post directly against the viewer's profile so the "For you"
+  // tab produces a visibly different order from newest-first ("All wisdom").
+  //
+  // Points:
+  //   +50  post topic is in the viewer's own topics list
+  //   +20  author is the opposite role (the person you're meant to connect with)
+  //   +15  author shares at least one language with the viewer
+  //   tiny recency tiebreaker (≈ 0.17 for a 2025 post) — won't override real signals
+  const relevanceScore = (post: Post): number => {
     if (!user) return 0;
-    const authorPercent = matchPercentByAuthor[post.authorId];
-    if (authorPercent !== undefined) return authorPercent;
-    // Same-role author (e.g. mentor viewing another mentor's post): fall
-    // back to simple topic overlap so the ranking still means something.
-    return user.topics.includes(post.topic) ? 60 : 30;
+    const author = users.find((u) => u.id === post.authorId);
+    let score = 0;
+    if (user.topics.includes(post.topic)) score += 50;
+    if (author) {
+      if (author.role !== user.role) score += 20;
+      if (author.languages?.some((l) => user.languages?.includes(l))) score += 15;
+    }
+    // Tiny recency bonus so ties break newest-first (value ≈ 0.17 for recent posts)
+    score += new Date(post.createdAt).getTime() / 1e13;
+    return score;
   };
 
   const handleRequestCall = async (post: Post, author?: User) => {
