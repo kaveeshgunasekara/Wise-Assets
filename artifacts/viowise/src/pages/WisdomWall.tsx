@@ -116,10 +116,23 @@ export default function WisdomWall() {
 
   const handleRequestCall = async (post: Post, author?: User) => {
     if (!user || !author) return;
+    // Skip if an active request to this person already exists (UI guard)
+    const hasActive = sentRequests.some(
+      (r) => r.toId === author.id && (r.status === "pending" || r.status === "accepted"),
+    );
+    if (hasActive) {
+      setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
+      return;
+    }
     const intent: RequestIntent = role === "mentor" ? "offer" : "seek";
-    await requestCall(user.id, author.id, { postId: post.id, intent });
-    setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
-    logInteraction({ userId: user.id, eventType: "call_requested", targetId: author.id }).catch(() => {});
+    try {
+      await requestCall(user.id, author.id, { postId: post.id, intent });
+      setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
+      logInteraction({ userId: user.id, eventType: "call_requested", targetId: author.id }).catch(() => {});
+    } catch {
+      // API rejected (duplicate race or other error) — still mark sent so UI stays consistent
+      setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
+    }
   };
 
   const handlePostDirect = async () => {
@@ -479,7 +492,13 @@ export default function WisdomWall() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredPosts.map(post => {
                 const author = authorOf(post);
-                const alreadySent = sentPostIds[post.id];
+                // Already sent if clicked this session OR if a pending/accepted request
+                // to this author was loaded from the DB (survives page reload).
+                const alreadySent =
+                  sentPostIds[post.id] ||
+                  sentRequests.some(
+                    (r) => r.toId === author?.id && (r.status === "pending" || r.status === "accepted"),
+                  );
                 return (
                   <div key={post.id} className="bg-white p-8 rounded-[16px] card-shadow flex flex-col h-full relative">
                     {post.isNew && <span className="absolute top-6 right-6 bg-accent text-white px-3 py-1 rounded-full text-base font-semibold tracking-wide uppercase">NEW</span>}

@@ -297,6 +297,17 @@ export async function requestCall(
     }
   }
 
+  // Prevent duplicates: reject if a pending or accepted request already exists in either direction.
+  const { data: existing } = await supabase
+    .from("requests")
+    .select("id")
+    .in("status", ["pending", "accepted"])
+    .or(`and(from_id.eq.${fromId},to_id.eq.${toId}),and(from_id.eq.${toId},to_id.eq.${fromId})`)
+    .limit(1);
+  if (existing && existing.length > 0) {
+    throw new Error("[api] requestCall: an active request already exists between these users");
+  }
+
   const row = {
     from_id: fromId,
     to_id: toId,

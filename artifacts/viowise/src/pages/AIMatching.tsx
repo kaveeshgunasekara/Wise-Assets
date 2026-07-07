@@ -1,7 +1,7 @@
 import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
 import { useEffect, useState } from "react";
-import { getMatches, getMatchReason, requestCall, logInteraction } from "@/services/api";
+import { getMatches, getMatchReason, getSentRequests, requestCall, logInteraction } from "@/services/api";
 import type { Match, RequestIntent } from "@/types";
 
 const FALLBACK_REASON = "Their background and shared interests make this a strong match for a meaningful conversation.";
@@ -20,10 +20,18 @@ export default function AIMatching() {
       return;
     }
     (async () => {
-      console.log('MATCHING DEBUG — my id:', user.id, 'my role:', user.role);
-      const result = await getMatches(user.id);
-      console.log('MATCH RESULTS:', result.map(m => ({ name: m.user.name, role: m.user.role, pct: m.percent })));
+      const [result, sent] = await Promise.all([
+        getMatches(user.id),
+        getSentRequests(user.id),
+      ]);
       setMatches(result);
+      // Pre-populate sentIds so the button is already greyed on load
+      // for partners who already have an active request this session or prior.
+      const initial: Record<string, boolean> = {};
+      sent
+        .filter((r) => r.status === "pending" || r.status === "accepted")
+        .forEach((r) => { initial[r.toId] = true; });
+      setSentIds(initial);
       setLoading(false);
       result.forEach((m) => {
         logInteraction({ userId: user.id, eventType: "match_shown", targetId: m.user.id, score: m.percent }).catch(() => {});
@@ -60,9 +68,13 @@ export default function AIMatching() {
   const handleRequestCall = async (m: Match) => {
     if (!user) return;
     const intent: RequestIntent = role === "mentor" ? "offer" : "seek";
-    await requestCall(user.id, m.user.id, { intent });
+    try {
+      await requestCall(user.id, m.user.id, { intent });
+      logInteraction({ userId: user.id, eventType: "call_requested", targetId: m.user.id }).catch(() => {});
+    } catch {
+      // Duplicate or API error — mark as sent anyway so UI reflects reality
+    }
     setSentIds((prev) => ({ ...prev, [m.user.id]: true }));
-    logInteraction({ userId: user.id, eventType: "call_requested", targetId: m.user.id }).catch(() => {});
   };
 
   return (
