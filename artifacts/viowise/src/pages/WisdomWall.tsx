@@ -12,6 +12,7 @@ import {
   getRequests,
   getSentRequests,
   respondRequest,
+  logInteraction,
 } from "@/services/api";
 import type { Post, User, Match, CallRequest, RequestIntent } from "@/types";
 import { useLocation } from "wouter";
@@ -118,6 +119,7 @@ export default function WisdomWall() {
     const intent: RequestIntent = role === "mentor" ? "offer" : "seek";
     await requestCall(user.id, author.id, { postId: post.id, intent });
     setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
+    logInteraction({ userId: user.id, eventType: "call_requested", targetId: author.id }).catch(() => {});
   };
 
   const handlePostDirect = async () => {
@@ -143,9 +145,7 @@ export default function WisdomWall() {
   const handleRespond = async (req: CallRequest, action: "accept" | "decline") => {
     await respondRequest(req.id, action);
     if (action === "accept") {
-      // The person on the other side of this request becomes the active
-      // call partner for the consent screen, the call, and the story
-      // capture step that follow.
+      logInteraction({ userId: user!.id, eventType: "accepted", targetId: req.fromId }).catch(() => {});
       setCallPartnerId(req.fromId);
       setLocation("/pre-call");
     } else {

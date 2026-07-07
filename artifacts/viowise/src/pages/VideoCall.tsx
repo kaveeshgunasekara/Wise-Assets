@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
-import { getUserById } from "@/services/api";
+import { getUserById, reportUser } from "@/services/api";
 import type { User } from "@/types";
 
 export default function VideoCall() {
-  const { subtitlesConsent, storyCaptureConsent, callPartnerId } = useApp();
+  const { user, subtitlesConsent, storyCaptureConsent, callPartnerId } = useApp();
   const [, setLocation] = useLocation();
   const [timer, setTimer] = useState(0);
   const [subIndex, setSubIndex] = useState(0);
@@ -14,6 +14,7 @@ export default function VideoCall() {
   const [promptVisible, setPromptVisible] = useState(true);
   const [reportModal, setReportModal] = useState<number>(0);
   const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
   const [partner, setPartner] = useState<User | undefined>(undefined);
@@ -60,6 +61,16 @@ export default function VideoCall() {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleSubmitReport = async () => {
+    if (!user || !callPartnerId || !reportReason) return;
+    try {
+      await reportUser(user.id, callPartnerId, "call", reportReason, reportDetails || undefined);
+    } catch {
+      // non-fatal: still show confirmation
+    }
+    setReportModal(2);
   };
 
   const handleEndCall = () => {
@@ -190,13 +201,13 @@ export default function VideoCall() {
                     </label>
                   ))}
                   {reportReason === "Something else" && (
-                    <textarea className="w-full mt-2 p-3 border border-border rounded-lg text-base" placeholder="Please describe..." rows={3}></textarea>
+                    <textarea value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} className="w-full mt-2 p-3 border border-border rounded-lg text-base" placeholder="Please describe..." rows={3} />
                   )}
                 </div>
                 <p className="text-foreground/60 text-base mb-6">{partnerName} won't be notified.</p>
                 <div className="flex gap-3 justify-end">
                   <button onClick={() => setReportModal(0)} className="px-4 py-2 font-medium">Cancel</button>
-                  <button onClick={() => setReportModal(2)} disabled={!reportReason} className="px-6 py-2 bg-[#DC2626] text-white rounded-lg font-medium disabled:opacity-50">Submit report</button>
+                  <button onClick={handleSubmitReport} disabled={!reportReason} className="px-6 py-2 bg-[#DC2626] text-white rounded-lg font-medium disabled:opacity-50">Submit report</button>
                 </div>
               </>
             ) : (

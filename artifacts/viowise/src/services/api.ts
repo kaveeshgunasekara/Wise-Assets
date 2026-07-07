@@ -334,6 +334,26 @@ export async function respondRequest(
   // MOCK: const request = requestsStore.find((r) => r.id === id); if (request) request.status = action === "accept" ? "accepted" : "declined"; return request;
 }
 
+// ─── 6. Reports ───────────────────────────────────────────────────────────
+
+export async function reportUser(
+  reporterId: string,
+  reportedId: string,
+  context: string,
+  reason: string,
+  details?: string,
+): Promise<void> {
+  const { error } = await supabase.from("reports").insert({
+    reporter_id: reporterId,
+    reported_id: reportedId,
+    context,
+    reason,
+    ...(details ? { details } : {}),
+    status: "pending",
+  });
+  if (error) throw new Error(`[api] reportUser: ${error.message}`);
+}
+
 // ─── 5. Interactions ──────────────────────────────────────────────────────
 
 // TODO(backend): persist interactions server-side for future ML-driven matching.

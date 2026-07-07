@@ -1,7 +1,7 @@
 import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
 import { useEffect, useState } from "react";
-import { getMatches, getMatchReason, requestCall } from "@/services/api";
+import { getMatches, getMatchReason, requestCall, logInteraction } from "@/services/api";
 import type { Match, RequestIntent } from "@/types";
 
 const FALLBACK_REASON = "Their background and shared interests make this a strong match for a meaningful conversation.";
@@ -23,6 +23,9 @@ export default function AIMatching() {
       const result = await getMatches(user.id);
       setMatches(result);
       setLoading(false);
+      result.forEach((m) => {
+        logInteraction({ userId: user.id, eventType: "match_shown", targetId: m.user.id, score: m.percent }).catch(() => {});
+      });
     })();
   }, [user]);
 
@@ -57,6 +60,7 @@ export default function AIMatching() {
     const intent: RequestIntent = role === "mentor" ? "offer" : "seek";
     await requestCall(user.id, m.user.id, { intent });
     setSentIds((prev) => ({ ...prev, [m.user.id]: true }));
+    logInteraction({ userId: user.id, eventType: "call_requested", targetId: m.user.id }).catch(() => {});
   };
 
   return (

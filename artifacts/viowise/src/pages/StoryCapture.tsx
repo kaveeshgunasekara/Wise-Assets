@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AppNav from "@/components/AppNav";
-import { createPost, getUserById, getStorySummary } from "@/services/api";
+import { createPost, getUserById, getStorySummary, reportUser } from "@/services/api";
 import type { User } from "@/types";
 
 export default function StoryCapture() {
@@ -13,6 +13,7 @@ export default function StoryCapture() {
   const [scheduleMessage, setScheduleMessage] = useState(false);
   const [reportModal, setReportModal] = useState<number>(0);
   const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
   const [partner, setPartner] = useState<User | undefined>(undefined);
 
   const [quoteText, setQuoteText] = useState("");
@@ -44,6 +45,17 @@ export default function StoryCapture() {
     "I felt pressured to share my story",
     "Something else",
   ];
+
+  const handleSubmitReport = async () => {
+    if (!user || !callPartnerId || !reportReason) return;
+    try {
+      await reportUser(user.id, callPartnerId, "call", reportReason, reportDetails || undefined);
+    } catch {
+      // non-fatal: still show confirmation
+    }
+    setReportModal(2);
+    setReportDetails("");
+  };
 
   const handleShare = async () => {
     if (!user) return;
@@ -171,13 +183,13 @@ export default function StoryCapture() {
                     </label>
                   ))}
                   {reportReason === "Something else" && (
-                    <textarea className="w-full mt-2 p-3 border border-border rounded-lg text-base" placeholder="Please describe..." rows={3}></textarea>
+                    <textarea value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} className="w-full mt-2 p-3 border border-border rounded-lg text-base" placeholder="Please describe..." rows={3} />
                   )}
                 </div>
                 <p className="text-foreground/60 text-base mb-6">{partnerName} won't be notified.</p>
                 <div className="flex gap-3 justify-end">
-                  <button onClick={() => { setReportModal(0); setReportReason(""); }} className="px-4 py-2 font-medium">Cancel</button>
-                  <button onClick={() => setReportModal(2)} disabled={!reportReason} className="px-6 py-2 bg-[#DC2626] text-white rounded-lg font-medium disabled:opacity-50">Submit report</button>
+                  <button onClick={() => { setReportModal(0); setReportReason(""); setReportDetails(""); }} className="px-4 py-2 font-medium">Cancel</button>
+                  <button onClick={handleSubmitReport} disabled={!reportReason} className="px-6 py-2 bg-[#DC2626] text-white rounded-lg font-medium disabled:opacity-50">Submit report</button>
                 </div>
               </>
             ) : (
