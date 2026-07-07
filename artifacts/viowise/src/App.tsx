@@ -22,11 +22,13 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
-// There's no more auto-seeded default user, so pages that assume a real
-// signed-in person (calls, profile, matching) must bounce anonymous
-// visitors back to sign-in instead of rendering with a null user.
+// Guard auth-required routes. While the initial Supabase session is being
+// restored (authLoading), render nothing so we don't flash-redirect a user
+// who has a valid session to the sign-in page. Once resolved: redirect if
+// there's no session, render the page if there is one.
 function RequireAuth({ component: Component }: { component: ComponentType }) {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
+  if (authLoading) return null;
   if (!user) return <Redirect to="/sign-in" />;
   return <Component />;
 }

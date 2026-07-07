@@ -127,16 +127,10 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
   // MOCK: return usersStore.find((u) => u.email.toLowerCase() === normalized);
 }
 
-export async function createUser(input: Omit<User, "id" | "verified">): Promise<User> {
-  const { data, error } = await supabase
-    .from("users")
-    .insert({ ...input, verified: true })
-    .select()
-    .single();
-  if (error || !data) throw new Error(`[api] createUser: ${error?.message ?? "no data returned"}`);
-  return data as User;
-  // MOCK: const user: User = { ...input, id: `user-${Date.now()}`, verified: true }; usersStore = [...usersStore, user]; return user;
-}
+// createUser was removed: the handle_new_user() Supabase DB trigger auto-inserts
+// the public.users row on auth.signUp, reading name/age/role from user_metadata.
+// Inserting again here would conflict with (or duplicate) that trigger row.
+// Profile updates (topics, languages, bio) are handled by updateUser() below.
 
 export async function updateUser(
   id: string,

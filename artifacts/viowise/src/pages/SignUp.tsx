@@ -4,10 +4,15 @@ import { useState } from "react";
 import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function SignUp() {
-  const { role, setRole, pendingName, setPendingName, pendingEmail, setPendingEmail, pendingAge, setPendingAge } = useApp();
+  const {
+    role, setRole,
+    pendingName, setPendingName,
+    pendingEmail, setPendingEmail,
+    pendingAge, setPendingAge,
+    pendingPassword, setPendingPassword,
+  } = useApp();
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
-  const [password, setPassword] = useState("");
   const [roleError, setRoleError] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -109,8 +114,8 @@ export default function SignUp() {
                 type={showPassword ? "text" : "password"}
                 required
                 minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={pendingPassword}
+                onChange={(e) => setPendingPassword(e.target.value)}
                 placeholder="Choose a password"
                 className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
               />

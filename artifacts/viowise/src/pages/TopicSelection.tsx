@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
 import TopicSelect from "@/components/TopicSelect";
-import { createUser } from "@/services/api";
+import { supabase } from "@/services/supabase";
+import { getUserById } from "@/services/api";
 
 const LANGUAGE_OPTIONS = [
   "English",
@@ -24,9 +25,11 @@ export default function TopicSelection() {
     pendingName,
     pendingEmail,
     pendingAge,
+    pendingPassword,
     setPendingName,
     setPendingEmail,
     setPendingAge,
+    setPendingPassword,
     pendingTopics,
     setPendingTopics,
     pendingLanguages,
@@ -53,29 +56,53 @@ export default function TopicSelection() {
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!role) {
-      // Role is normally set on the sign-up step, but a user could reach
-      // this step without one (e.g. resuming after sign-out) — surface it
-      // instead of silently doing nothing.
       setError("We lost track of whether you're a mentor or learner. Please start sign-up again.");
       return;
     }
     setError(null);
     setCreating(true);
-    // This is the last onboarding step, so it's where we create the real
-    // account — every field collected across sign-up and this step lands
-    // in one complete user record, then the person is signed in immediately.
-    const newUser = await createUser({
-      name: pendingName || "New member",
+
+    // Create the Supabase Auth user. Our handle_new_user() DB trigger runs
+    // immediately (same transaction) and inserts the corresponding row into
+    // the public.users table using the metadata supplied here.
+    // Do NOT separately insert into public.users — the trigger does it.
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: pendingEmail,
-      age: Number(pendingAge) || 0,
-      role,
-      topics: selectedTopics,
-      languages: selectedLanguages,
-      availability: [],
-      bio: "",
+      password: pendingPassword,
+      options: {
+        data: {
+          name: pendingName || "New member",
+          age: Number(pendingAge) || 0,
+          role,
+        },
+      },
     });
-    setUser(newUser);
-    setRole(role);
+
+    if (authError) {
+      setError(authError.message);
+      setCreating(false);
+      return;
+    }
+
+    // If email confirmation is required, session will be null.
+    if (!authData.session) {
+      setError(
+        "Check your email to confirm your account, then sign in below.",
+      );
+      setCreating(false);
+      return;
+    }
+
+    // The trigger has already inserted the profile row. Fetch it now so
+    // RequireAuth sees a real user before we navigate to /verified → /wall.
+    const profile = await getUserById(authData.user!.id);
+    if (profile) {
+      setUser(profile);
+      setRole(profile.role);
+    }
+
+    // Clear all onboarding state (password first — don't hold it longer than needed).
+    setPendingPassword("");
     setPendingName("");
     setPendingEmail("");
     setPendingAge("");

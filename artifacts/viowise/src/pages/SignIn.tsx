@@ -2,7 +2,8 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
-import { getUserByEmail } from "@/services/api";
+import { supabase } from "@/services/supabase";
+import { getUserById } from "@/services/api";
 
 export default function SignIn() {
   const { setRole, setUser } = useApp();
@@ -17,15 +18,30 @@ export default function SignIn() {
     setSigningIn(true);
     setError(null);
 
-    const signedInUser = await getUserByEmail(email);
-    if (!signedInUser) {
-      setError("We couldn't find an account with that email. Try signing up instead.");
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    if (authError || !data.user) {
+      setError(
+        authError?.message === "Invalid login credentials"
+          ? "We couldn't find an account with that email and password."
+          : (authError?.message ?? "Sign-in failed. Please try again."),
+      );
       setSigningIn(false);
       return;
     }
 
-    setUser(signedInUser);
-    setRole(signedInUser.role);
+    // Manually load the profile before navigating so RequireAuth sees a
+    // non-null user immediately (onAuthStateChange will fire too, but this
+    // avoids any race between the navigation and the async profile load).
+    const profile = await getUserById(data.user.id);
+    if (profile) {
+      setUser(profile);
+      setRole(profile.role);
+    }
+
     setSigningIn(false);
     setLocation("/wall");
   };

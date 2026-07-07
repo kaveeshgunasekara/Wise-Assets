@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import { useState } from "react";
 import AccessibilityControl from "@/components/AccessibilityControl";
+import { supabase } from "@/services/supabase";
 
 export default function AppNav() {
   const { user, setUser, setRole } = useApp();
@@ -9,6 +10,15 @@ export default function AppNav() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
+
+  const handleSignOut = async () => {
+    setMenuOpen(false);
+    await supabase.auth.signOut();
+    // onAuthStateChange in use-app will clear user + role automatically.
+    setUser(null);
+    setRole(null);
+    setLocation("/");
+  };
 
   return (
     <header className="bg-white border-b border-border sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
@@ -31,7 +41,7 @@ export default function AppNav() {
         <AccessibilityControl />
 
         <div className="relative">
-          <button 
+          <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl border border-primary/20"
             aria-expanded={menuOpen}
@@ -39,16 +49,12 @@ export default function AppNav() {
           >
             {initial}
           </button>
-          
+
           {menuOpen && (
             <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-border shadow-lg rounded-xl py-2 z-50">
               <Link href="/profile" onClick={() => setMenuOpen(false)} className="block px-4 py-3 hover:bg-secondary">Profile</Link>
-              <button 
-                onClick={() => {
-                  setUser(null);
-                  setRole(null);
-                  setLocation("/");
-                }} 
+              <button
+                onClick={handleSignOut}
                 className="w-full text-left px-4 py-3 hover:bg-secondary text-foreground"
               >
                 Sign out
