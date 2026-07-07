@@ -20,7 +20,9 @@ export default function AIMatching() {
       return;
     }
     (async () => {
+      console.log('MATCHING DEBUG — my id:', user.id, 'my role:', user.role);
       const result = await getMatches(user.id);
+      console.log('MATCH RESULTS:', result.map(m => ({ name: m.user.name, role: m.user.role, pct: m.percent })));
       setMatches(result);
       setLoading(false);
       result.forEach((m) => {
