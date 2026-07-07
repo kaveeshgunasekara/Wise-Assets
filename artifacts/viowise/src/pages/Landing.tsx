@@ -20,14 +20,23 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-4xl mx-auto z-10 py-20">
+      <main className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-4xl mx-auto z-10 py-12 w-full">
         <span className="text-primary text-[16px] uppercase tracking-widest font-semibold mb-6">CONNECTING GENERATIONS</span>
-        <h1 className="text-[56px] leading-tight font-serif font-normal italic text-foreground mb-6">
+        <h1 className="text-[56px] leading-tight font-serif font-normal italic text-foreground mb-4">
           Your experience is someone's answer.
         </h1>
-        <p className="text-[20px] text-foreground/80 mb-12 max-w-2xl">
+        <p className="text-[20px] text-foreground/80 mb-10 max-w-2xl">
           Real conversations between generations, guided by AI — never replaced by it.
         </p>
+
+        {/* Hero image — landing page only, contained in the hero area */}
+        <div className="w-full max-w-3xl mx-auto mb-10 rounded-2xl overflow-hidden shadow-xl">
+          <img
+            src="/hero-connection.jpeg"
+            alt="Elders and young people connected through AI-guided conversations"
+            className="w-full h-auto object-cover block"
+          />
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
           <Link href="/sign-up" onClick={() => setRole("mentor")} className="flex-1 bg-primary text-white text-[18px] font-medium py-4 px-6 rounded-xl hover:bg-primary-hover transition-colors shadow-lg">
