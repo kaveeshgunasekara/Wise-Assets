@@ -20,7 +20,7 @@ import { useLocation } from "wouter";
 export default function WisdomWall() {
   const { role, user, setCallPartnerId } = useApp();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState("For you");
+  const [tab, setTab] = useState("Wisdom");
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
 
@@ -95,24 +95,21 @@ export default function WisdomWall() {
     await refreshPosts();
   };
 
-  // Score each post directly against the viewer's profile so the "For you"
-  // tab produces a visibly different order from newest-first ("All wisdom").
+  // Ranks posts by relevance to the viewer. Used by both "Wisdom" and "Community".
+  // "Wisdom" pre-filters to opposite-role authors before scoring, so no role signal
+  // is needed here — topic overlap drives the ordering, language is secondary.
   //
   // Points:
   //   +50  post topic is in the viewer's own topics list
-  //   +20  author is the opposite role (the person you're meant to connect with)
   //   +15  author shares at least one language with the viewer
-  //   tiny recency tiebreaker (≈ 0.17 for a 2025 post) — won't override real signals
+  //   tiny recency tiebreaker (≈ 0.17 for a recent post) — won't override real signals
   const relevanceScore = (post: Post): number => {
     if (!user) return 0;
     const author = users.find((u) => u.id === post.authorId);
     let score = 0;
     if (user.topics.includes(post.topic)) score += 50;
-    if (author) {
-      if (author.role !== user.role) score += 20;
-      if (author.languages?.some((l) => user.languages?.includes(l))) score += 15;
-    }
-    // Tiny recency bonus so ties break newest-first (value ≈ 0.17 for recent posts)
+    if (author?.languages?.some((l) => user.languages?.includes(l))) score += 15;
+    // Tiny recency bonus so ties break newest-first
     score += new Date(post.createdAt).getTime() / 1e13;
     return score;
   };
@@ -159,7 +156,14 @@ export default function WisdomWall() {
 
   const visiblePosts = posts.filter((p) => {
     if (tab === "My posts") return user ? p.authorId === user.id : false;
-    return p.status === "published";
+    if (p.status !== "published") return false;
+    // "Wisdom" tab: only show posts from the opposite role so learners see
+    // mentors' wisdom and mentors see learners' reflections.
+    if (tab === "Wisdom" && user) {
+      const author = users.find((u) => u.id === p.authorId);
+      if (author && author.role === user.role) return false;
+    }
+    return true;
   });
 
   let filteredPosts = visiblePosts.filter((p) => {
@@ -168,10 +172,9 @@ export default function WisdomWall() {
     return true;
   });
 
-  if (tab === "For you") {
-    // A real ranked, role-aware feed: everything published, reordered by
-    // relevance to this user (their real match % with the author, or a
-    // topic-overlap fallback) — never hidden, unlike a plain filter.
+  // Both "Wisdom" and "Community" are ranked by personal relevance.
+  // "Community" differs only in that same-role posts are also included.
+  if (tab === "Wisdom" || tab === "Community") {
     filteredPosts = [...filteredPosts].sort((a, b) => relevanceScore(b) - relevanceScore(a));
   }
 
@@ -186,7 +189,7 @@ export default function WisdomWall() {
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
 
         {/* Pending-approval Card */}
-        {pendingApproval && tab === "For you" && (
+        {pendingApproval && tab === "Wisdom" && (
           <div className="bg-[#F4F1FC] border border-[#C5BCDF] rounded-[16px] p-6 mb-8 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
             <div>
               <h3 className="font-semibold text-[18px] text-primary mb-2">
@@ -203,7 +206,7 @@ export default function WisdomWall() {
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-border mb-8 overflow-x-auto pb-1">
-          {["For you", "All wisdom", "My posts", "Requests"].map(t => (
+          {["Wisdom", "Community", "My posts", "Requests"].map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -217,6 +220,18 @@ export default function WisdomWall() {
             </button>
           ))}
         </div>
+
+        {/* Tab subtitle */}
+        {tab === "Wisdom" && (
+          <p className="text-foreground/50 text-[15px] mb-6 -mt-4">
+            Insights from {role === "learner" ? "mentors" : "learners"} matched to you.
+          </p>
+        )}
+        {tab === "Community" && (
+          <p className="text-foreground/50 text-[15px] mb-6 -mt-4">
+            The wider VIOWISE conversation.
+          </p>
+        )}
 
         {/* Direct posting composer */}
         {tab !== "Requests" && (
