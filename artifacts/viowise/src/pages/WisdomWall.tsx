@@ -293,60 +293,83 @@ export default function WisdomWall() {
             {/* ── Received ── */}
             <section>
               <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Received</h2>
-              <div className="space-y-4">
-                {myRequests.map(req => {
-                  const fromUser = users.find(u => u.id === req.fromId);
-                  const intentLabel = req.intent === "seek" ? "would like your advice" : "would like to help";
-                  return (
-                    <div key={req.id} className="bg-white p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
-                        <div>
-                          <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
-                          <p className="text-foreground/70">
-                            {intentLabel}
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
-                              {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                      {req.status !== "pending" ? (
-                        <p className="text-foreground/70 font-medium px-4 py-2">
-                          {requestActionMsg[req.id] ?? (
-                            req.status === "accepted" ? "Accepted" :
-                            req.status === "completed" ? "Call completed" :
-                            "Declined"
-                          )}
-                        </p>
-                      ) : (
-                        <div className="flex gap-3">
-                          <button onClick={() => handleRespond(req, "decline")} className="px-6 py-3 border border-border rounded-[12px] font-medium hover:bg-secondary">Decline</button>
-                          <button onClick={() => handleRespond(req, "accept")} className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover">Accept</button>
-                        </div>
+              {(() => {
+                const pendingReceived = myRequests.filter(r => r.status === "pending");
+                const pastReceived    = myRequests.filter(r => r.status !== "pending");
+                const receivedStatusLabel = (s: string) =>
+                  s === "accepted" ? "Accepted" : s === "completed" ? "Call completed" : "Declined";
+                return (
+                  <>
+                    <div className="space-y-4">
+                      {pendingReceived.map(req => {
+                        const fromUser = users.find(u => u.id === req.fromId);
+                        return (
+                          <div key={req.id} className="bg-white p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
+                              <div>
+                                <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
+                                <p className="text-foreground/70">
+                                  {req.intent === "seek" ? "would like your advice" : "would like to help"}
+                                  <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
+                                    {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-3 shrink-0">
+                              <button onClick={() => handleRespond(req, "decline")} className="px-6 py-3 border border-border rounded-[12px] font-medium hover:bg-secondary">Decline</button>
+                              <button onClick={() => handleRespond(req, "accept")} className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover">Accept</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {pendingReceived.length === 0 && (
+                        <p className="text-foreground/60 py-4">No pending requests.</p>
                       )}
                     </div>
-                  );
-                })}
-                {myRequests.length === 0 && (
-                  <p className="text-foreground/60 py-4">No requests received yet.</p>
-                )}
-              </div>
+
+                    {pastReceived.length > 0 && (
+                      <div className="mt-8">
+                        <h3 className="text-[14px] font-semibold text-foreground/40 uppercase tracking-widest mb-3">History</h3>
+                        <div className="space-y-3">
+                          {pastReceived.map(req => {
+                            const fromUser = users.find(u => u.id === req.fromId);
+                            return (
+                              <div key={req.id} className="p-5 rounded-[16px] border border-border bg-secondary/30 flex flex-col sm:flex-row gap-4 justify-between items-center opacity-60">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 rounded-full bg-foreground/10 text-foreground/50 flex items-center justify-center font-serif text-lg">{fromUser?.name?.[0] ?? "?"}</div>
+                                  <div>
+                                    <h3 className="font-semibold text-[16px] text-foreground/70">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
+                                    <p className="text-foreground/50 text-base">{req.intent === "seek" ? "would like your advice" : "would like to help"}</p>
+                                  </div>
+                                </div>
+                                <span className="text-foreground/50 font-medium text-[15px] shrink-0">{receivedStatusLabel(req.status)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </section>
 
             {/* ── Sent ── */}
             <section>
               <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Sent</h2>
               {(() => {
-                const active = sentRequests.filter(r => r.status !== "completed");
-                const past   = sentRequests.filter(r => r.status === "completed");
+                // Active = things that still need attention (awaiting a response, or accepted and ready to join)
+                const activeSent = sentRequests.filter(r => r.status === "pending" || r.status === "accepted");
+                // History = resolved (declined or completed calls)
+                const pastSent   = sentRequests.filter(r => r.status === "declined" || r.status === "completed");
                 return (
                   <>
                     <div className="space-y-4">
-                      {active.map(req => {
+                      {activeSent.map(req => {
                         const toUser = users.find(u => u.id === req.toId);
                         const isAccepted = req.status === "accepted";
-                        const isDeclined = req.status === "declined";
                         return (
                           <div
                             key={req.id}
@@ -372,25 +395,24 @@ export default function WisdomWall() {
                                   Join call
                                 </button>
                               </div>
-                            ) : isDeclined ? (
-                              <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/50 font-medium text-[15px]">Declined</span>
                             ) : (
-                              <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px]">Awaiting response</span>
+                              <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px] shrink-0">Awaiting response</span>
                             )}
                           </div>
                         );
                       })}
-                      {active.length === 0 && past.length === 0 && (
+                      {activeSent.length === 0 && pastSent.length === 0 && (
                         <p className="text-foreground/60 py-4">No requests sent yet.</p>
                       )}
                     </div>
 
-                    {past.length > 0 && (
+                    {pastSent.length > 0 && (
                       <div className="mt-8">
-                        <h3 className="text-[14px] font-semibold text-foreground/40 uppercase tracking-widest mb-3">Past calls</h3>
+                        <h3 className="text-[14px] font-semibold text-foreground/40 uppercase tracking-widest mb-3">History</h3>
                         <div className="space-y-3">
-                          {past.map(req => {
+                          {pastSent.map(req => {
                             const toUser = users.find(u => u.id === req.toId);
+                            const isCompleted = req.status === "completed";
                             return (
                               <div key={req.id} className="p-5 rounded-[16px] border border-border bg-secondary/30 flex flex-col sm:flex-row gap-4 justify-between items-center opacity-60">
                                 <div className="flex items-center gap-4">
@@ -400,9 +422,11 @@ export default function WisdomWall() {
                                     <p className="text-foreground/50 text-base">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
                                   </div>
                                 </div>
-                                <span className="flex items-center gap-1.5 text-foreground/50 font-medium text-[15px]">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                  Call completed
+                                <span className="flex items-center gap-1.5 text-foreground/50 font-medium text-[15px] shrink-0">
+                                  {isCompleted && (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                  )}
+                                  {isCompleted ? "Call completed" : "Declined"}
                                 </span>
                               </div>
                             );
