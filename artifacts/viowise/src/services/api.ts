@@ -308,6 +308,16 @@ export async function getRequests(userId: string): Promise<CallRequest[]> {
   // MOCK: return requestsStore.filter((r) => r.toId === userId);
 }
 
+export async function getSentRequests(userId: string): Promise<CallRequest[]> {
+  const { data, error } = await supabase
+    .from("requests")
+    .select("*")
+    .eq("from_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) { console.error("[api] getSentRequests:", error.message); return []; }
+  return ((data as DbRequest[]) ?? []).map(toRequest);
+}
+
 export async function respondRequest(
   id: string,
   action: "accept" | "decline",

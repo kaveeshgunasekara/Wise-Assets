@@ -10,6 +10,7 @@ import {
   getMatches,
   requestCall,
   getRequests,
+  getSentRequests,
   respondRequest,
 } from "@/services/api";
 import type { Post, User, Match, CallRequest, RequestIntent } from "@/types";
@@ -26,6 +27,7 @@ export default function WisdomWall() {
   const [users, setUsers] = useState<User[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [myRequests, setMyRequests] = useState<CallRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<CallRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [sentPostIds, setSentPostIds] = useState<Record<string, boolean>>({});
   const [requestActionMsg, setRequestActionMsg] = useState<Record<string, string>>({});
@@ -43,8 +45,12 @@ export default function WisdomWall() {
 
   const refreshRequests = useCallback(async () => {
     if (!user) return;
-    const fresh = await getRequests(user.id);
+    const [fresh, freshSent] = await Promise.all([
+      getRequests(user.id),
+      getSentRequests(user.id),
+    ]);
     setMyRequests(fresh);
+    setSentRequests(freshSent);
   }, [user]);
 
   useEffect(() => {
@@ -59,9 +65,14 @@ export default function WisdomWall() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [fetchedMatches, fetchedRequests] = await Promise.all([getMatches(user.id), getRequests(user.id)]);
+      const [fetchedMatches, fetchedRequests, fetchedSent] = await Promise.all([
+        getMatches(user.id),
+        getRequests(user.id),
+        getSentRequests(user.id),
+      ]);
       setMatches(fetchedMatches);
       setMyRequests(fetchedRequests);
+      setSentRequests(fetchedSent);
     })();
   }, [user]);
 
@@ -161,7 +172,9 @@ export default function WisdomWall() {
     filteredPosts = [...filteredPosts].sort((a, b) => relevanceScore(b) - relevanceScore(a));
   }
 
-  const pendingRequestCount = myRequests.filter((r) => r.status === "pending").length;
+  const pendingRequestCount =
+    myRequests.filter((r) => r.status === "pending").length +
+    sentRequests.filter((r) => r.status === "accepted").length;
 
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
@@ -257,38 +270,97 @@ export default function WisdomWall() {
         {loading ? (
           <div className="text-center py-20 text-foreground/60">Loading...</div>
         ) : tab === "Requests" ? (
-          <div className="space-y-4">
-            {myRequests.map(req => {
-              const fromUser = users.find(u => u.id === req.fromId);
-              const intentLabel = req.intent === "seek" ? "would like your advice" : "would like to help";
-              return (
-                <div key={req.id} className="bg-white p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
-                    <div>
-                      <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
-                      <p className="text-foreground/70">
-                        {intentLabel}
-                        <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
-                          {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
-                        </span>
-                      </p>
+          <div className="space-y-10">
+
+            {/* ── Received ── */}
+            <section>
+              <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Received</h2>
+              <div className="space-y-4">
+                {myRequests.map(req => {
+                  const fromUser = users.find(u => u.id === req.fromId);
+                  const intentLabel = req.intent === "seek" ? "would like your advice" : "would like to help";
+                  return (
+                    <div key={req.id} className="bg-white p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
+                        <div>
+                          <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
+                          <p className="text-foreground/70">
+                            {intentLabel}
+                            <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
+                              {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      {req.status !== "pending" ? (
+                        <p className="text-foreground/70 font-medium px-4 py-2">
+                          {requestActionMsg[req.id] ?? (req.status === "accepted" ? "Accepted" : "Declined")}
+                        </p>
+                      ) : (
+                        <div className="flex gap-3">
+                          <button onClick={() => handleRespond(req, "decline")} className="px-6 py-3 border border-border rounded-[12px] font-medium hover:bg-secondary">Decline</button>
+                          <button onClick={() => handleRespond(req, "accept")} className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover">Accept</button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  {req.status !== "pending" ? (
-                    <p className="text-foreground/70 font-medium px-4 py-2">
-                      {requestActionMsg[req.id] ?? (req.status === "accepted" ? "Accepted" : "Declined")}
-                    </p>
-                  ) : (
-                    <div className="flex gap-3">
-                      <button onClick={() => handleRespond(req, "decline")} className="px-6 py-3 border border-border rounded-[12px] font-medium hover:bg-secondary">Decline</button>
-                      <button onClick={() => handleRespond(req, "accept")} className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover">Accept</button>
+                  );
+                })}
+                {myRequests.length === 0 && (
+                  <p className="text-foreground/60 py-4">No requests received yet.</p>
+                )}
+              </div>
+            </section>
+
+            {/* ── Sent ── */}
+            <section>
+              <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Sent</h2>
+              <div className="space-y-4">
+                {sentRequests.map(req => {
+                  const toUser = users.find(u => u.id === req.toId);
+                  const isAccepted = req.status === "accepted";
+                  const isDeclined = req.status === "declined";
+                  return (
+                    <div
+                      key={req.id}
+                      className={`p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{toUser?.name?.[0] ?? "?"}</div>
+                        <div>
+                          <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
+                          <p className="text-foreground/70">
+                            {req.intent === "seek" ? "You requested their advice" : "You offered to help"}
+                          </p>
+                        </div>
+                      </div>
+                      {isAccepted ? (
+                        <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+                          <span className="flex items-center gap-1.5 text-[#2D8B4E] font-semibold text-[16px]">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Accepted
+                          </span>
+                          <button
+                            onClick={() => { setCallPartnerId(req.toId); setLocation("/pre-call"); }}
+                            className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover"
+                          >
+                            Join call
+                          </button>
+                        </div>
+                      ) : isDeclined ? (
+                        <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/50 font-medium text-[15px]">Declined</span>
+                      ) : (
+                        <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px]">Awaiting response</span>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-            {myRequests.length === 0 && <p className="text-center text-foreground/60 py-12">No pending requests.</p>}
+                  );
+                })}
+                {sentRequests.length === 0 && (
+                  <p className="text-foreground/60 py-4">No requests sent yet.</p>
+                )}
+              </div>
+            </section>
+
           </div>
         ) : tab === "My posts" && filteredPosts.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-[16px] border border-border border-dashed">
