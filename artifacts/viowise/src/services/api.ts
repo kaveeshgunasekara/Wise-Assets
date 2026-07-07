@@ -1,4 +1,4 @@
-import { seedUsers, seedPosts } from "@/data/seed";
+import { supabase } from "./supabase";
 import type {
   User,
   Post,
@@ -8,121 +8,237 @@ import type {
   RequestIntent,
 } from "@/types";
 
-// Mock service layer. Every export here is async and returns data from
-// in-memory state seeded from src/data/seed.ts. This is the ONLY place
-// that touches "data" — components should never hardcode users/posts.
-// TODO(backend): swap the bodies of these functions for real network
-// calls (Supabase/REST) once a backend exists. Callers never change.
+// Supabase-backed service layer. Every export is async and returns fully-typed
+// data from the real database. Function signatures are identical to the previous
+// mock layer so no page/component changes are needed.
+//
+// COLUMN MAPPING (DB snake_case → TS camelCase):
+//   posts        : author_id → authorId, is_new → isNew, created_at → createdAt
+//   requests     : from_id → fromId, to_id → toId, post_id → postId, created_at → createdAt
+//   interactions : user_id → userId, event_type → eventType, target_id → targetId, created_at → createdAt
+//   users        : all DB columns match TS field names directly (no mapping needed)
+//
+// TODO(backend): replace getStorySummary with a real LLM call via a backend proxy.
+// TODO(backend): replace getMatchReason templating with a real Claude call via a backend proxy.
 
-const NETWORK_DELAY_MS = 200;
+// ─── DB row types (snake_case shape returned by Supabase) ─────────────────
 
-function delay<T>(value: T): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), NETWORK_DELAY_MS));
+type DbPost = {
+  id: string;
+  author_id: string;
+  type: Post["type"];
+  quote: string;
+  topic: string;
+  source: Post["source"];
+  status: Post["status"];
+  is_new: boolean | null;
+  created_at: string;
+};
+
+type DbRequest = {
+  id: string;
+  from_id: string;
+  to_id: string;
+  post_id: string | null;
+  intent: CallRequest["intent"];
+  status: CallRequest["status"];
+  topic: string | null;
+  created_at: string;
+};
+
+type DbInteraction = {
+  id: string;
+  user_id: string;
+  event_type: Interaction["eventType"];
+  target_id: string;
+  score: number | null;
+  created_at: string;
+};
+
+// ─── Row → type mappers ───────────────────────────────────────────────────
+
+function toPost(r: DbPost): Post {
+  return {
+    id: r.id,
+    authorId: r.author_id,
+    type: r.type,
+    quote: r.quote,
+    topic: r.topic,
+    source: r.source,
+    status: r.status,
+    ...(r.is_new != null && { isNew: r.is_new }),
+    createdAt: r.created_at,
+  };
 }
 
-let usersStore: User[] = [...seedUsers];
-let postsStore: Post[] = [...seedPosts];
-let requestsStore: CallRequest[] = [];
-let interactionsStore: Interaction[] = [];
+function toRequest(r: DbRequest): CallRequest {
+  return {
+    id: r.id,
+    fromId: r.from_id,
+    toId: r.to_id,
+    ...(r.post_id != null && { postId: r.post_id }),
+    intent: r.intent,
+    status: r.status,
+    ...(r.topic != null && { topic: r.topic }),
+    createdAt: r.created_at,
+  };
+}
 
-let nextUserId = 1;
-let nextPostId = 1;
-let nextRequestId = 1;
-let nextInteractionId = 1;
+function toInteraction(r: DbInteraction): Interaction {
+  return {
+    id: r.id,
+    userId: r.user_id,
+    eventType: r.event_type,
+    targetId: r.target_id,
+    ...(r.score != null && { score: r.score }),
+    createdAt: r.created_at,
+  };
+}
+
+// ─── 1. Users ─────────────────────────────────────────────────────────────
 
 export async function getUsers(): Promise<User[]> {
-  return delay([...usersStore]);
+  const { data, error } = await supabase.from("users").select("*");
+  if (error) { console.error("[api] getUsers:", error.message); return []; }
+  return (data as User[]) ?? [];
+  // MOCK: return [...usersStore];
 }
 
 export async function getUserById(id: string): Promise<User | undefined> {
-  return delay(usersStore.find((u) => u.id === id));
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) { console.error("[api] getUserById:", error.message); return undefined; }
+  return (data as User) ?? undefined;
+  // MOCK: return usersStore.find((u) => u.id === id);
 }
 
 export async function getUserByEmail(email: string): Promise<User | undefined> {
   const normalized = email.trim().toLowerCase();
-  return delay(usersStore.find((u) => u.email.toLowerCase() === normalized));
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .ilike("email", normalized)
+    .maybeSingle();
+  if (error) { console.error("[api] getUserByEmail:", error.message); return undefined; }
+  return (data as User) ?? undefined;
+  // MOCK: return usersStore.find((u) => u.email.toLowerCase() === normalized);
 }
 
-// Real account creation for sign-up. Called once, after the onboarding
-// steps (role, ID verification, topics/languages) have all been
-// collected, so the user record is complete from the moment it exists.
 export async function createUser(input: Omit<User, "id" | "verified">): Promise<User> {
-  const user: User = {
-    ...input,
-    id: `user-${Date.now()}-${nextUserId++}`,
-    verified: true,
-  };
-  usersStore = [...usersStore, user];
-  return delay(user);
+  const { data, error } = await supabase
+    .from("users")
+    .insert({ ...input, verified: true })
+    .select()
+    .single();
+  if (error || !data) throw new Error(`[api] createUser: ${error?.message ?? "no data returned"}`);
+  return data as User;
+  // MOCK: const user: User = { ...input, id: `user-${Date.now()}`, verified: true }; usersStore = [...usersStore, user]; return user;
 }
 
-export async function updateUser(id: string, updates: Partial<Omit<User, "id">>): Promise<User | undefined> {
-  const user = usersStore.find((u) => u.id === id);
-  if (user) Object.assign(user, updates);
-  return delay(user);
+export async function updateUser(
+  id: string,
+  updates: Partial<Omit<User, "id">>,
+): Promise<User | undefined> {
+  const { data, error } = await supabase
+    .from("users")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) { console.error("[api] updateUser:", error.message); return undefined; }
+  return (data as User) ?? undefined;
+  // MOCK: const user = usersStore.find((u) => u.id === id); if (user) Object.assign(user, updates); return user;
 }
+
+// ─── 2. Posts ─────────────────────────────────────────────────────────────
 
 export async function getPosts(): Promise<Post[]> {
-  return delay([...postsStore]);
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) { console.error("[api] getPosts:", error.message); return []; }
+  return ((data as DbPost[]) ?? []).map(toPost);
+  // MOCK: return [...postsStore];
 }
 
-export async function createPost(
-  input: Omit<Post, "id" | "createdAt">,
-): Promise<Post> {
-  const post: Post = {
-    ...input,
-    id: `post-${Date.now()}-${nextPostId++}`,
-    createdAt: new Date().toISOString(),
+export async function createPost(input: Omit<Post, "id" | "createdAt">): Promise<Post> {
+  const row = {
+    author_id: input.authorId,
+    type: input.type,
+    quote: input.quote,
+    topic: input.topic,
+    source: input.source,
+    status: input.status,
+    is_new: input.isNew ?? false,
   };
-  postsStore = [post, ...postsStore];
-  return delay(post);
+  const { data, error } = await supabase.from("posts").insert(row).select().single();
+  if (error || !data) throw new Error(`[api] createPost: ${error?.message ?? "no data returned"}`);
+  return toPost(data as DbPost);
+  // MOCK: const post: Post = { ...input, id: `post-${Date.now()}`, createdAt: new Date().toISOString() }; postsStore = [post, ...postsStore]; return post;
 }
 
 export async function approvePost(id: string): Promise<Post | undefined> {
-  const post = postsStore.find((p) => p.id === id);
-  if (post) {
-    post.status = "published";
-    post.isNew = true;
-  }
-  return delay(post);
+  const { data, error } = await supabase
+    .from("posts")
+    .update({ status: "published", is_new: true })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) { console.error("[api] approvePost:", error.message); return undefined; }
+  return data ? toPost(data as DbPost) : undefined;
+  // MOCK: const post = postsStore.find((p) => p.id === id); if (post) { post.status = "published"; post.isNew = true; } return post;
 }
 
 export async function declinePost(id: string): Promise<void> {
-  postsStore = postsStore.filter((p) => p.id !== id);
-  return delay(undefined);
+  const { error } = await supabase.from("posts").delete().eq("id", id);
+  if (error) console.error("[api] declinePost:", error.message);
+  // MOCK: postsStore = postsStore.filter((p) => p.id !== id);
 }
 
-// Posts can be edited by their author but never deleted, per product
-// requirements — a story someone shared should stay attributable and
-// auditable, just correctable.
+// Posts can be edited by their author but never deleted — a story someone
+// shared should stay attributable and auditable, just correctable.
 export async function editPost(
   id: string,
   updates: Partial<Pick<Post, "quote" | "topic">>,
 ): Promise<Post | undefined> {
-  const post = postsStore.find((p) => p.id === id);
-  if (post) Object.assign(post, updates);
-  return delay(post);
+  const { data, error } = await supabase
+    .from("posts")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) { console.error("[api] editPost:", error.message); return undefined; }
+  return data ? toPost(data as DbPost) : undefined;
+  // MOCK: const post = postsStore.find((p) => p.id === id); if (post) Object.assign(post, updates); return post;
 }
+
+// ─── 3. Matching (scoring stays in JS, user pool comes from DB) ───────────
 
 const TOPIC_WEIGHT = 12;
 const LANGUAGE_WEIGHT = 8;
 const BASE_PERCENT = 55;
 
-// Deterministic, rule-based score: shared topics + shared languages,
-// normalized to a percentage. Same two users always produce the same %.
 export async function getMatches(userId: string): Promise<Match[]> {
-  const current = usersStore.find((u) => u.id === userId);
-  if (!current) return delay([]);
+  const { data, error } = await supabase.from("users").select("*");
+  if (error) { console.error("[api] getMatches:", error.message); return []; }
 
-  const pool = usersStore.filter((u) => u.role !== current.role);
+  const users = (data as User[]) ?? [];
+  const current = users.find((u) => u.id === userId);
+  if (!current) return [];
 
+  const pool = users.filter((u) => u.role !== current.role);
   const maxPossible =
     current.topics.length * TOPIC_WEIGHT + current.languages.length * LANGUAGE_WEIGHT;
 
   const results: Match[] = pool.map((u) => {
     const sharedTopics = current.topics.filter((t) => u.topics.includes(t));
     const sharedLanguages = current.languages.filter((l) => u.languages.includes(l));
-    const raw = sharedTopics.length * TOPIC_WEIGHT + sharedLanguages.length * LANGUAGE_WEIGHT;
+    const raw =
+      sharedTopics.length * TOPIC_WEIGHT + sharedLanguages.length * LANGUAGE_WEIGHT;
     const percent =
       maxPossible > 0
         ? Math.min(99, Math.round(BASE_PERCENT + (raw / maxPossible) * (99 - BASE_PERCENT)))
@@ -131,86 +247,110 @@ export async function getMatches(userId: string): Promise<Match[]> {
   });
 
   results.sort((a, b) => b.percent - a.percent);
-  return delay(results);
+  return results;
+  // MOCK: pool was from usersStore filtered by role — scoring logic identical
 }
 
 // TODO(backend): replace this templated sentence with a real Claude call
 // (via a backend proxy — never call an LLM key from the frontend).
 export async function getMatchReason(aId: string, bId: string): Promise<string> {
-  const a = usersStore.find((u) => u.id === aId);
-  const b = usersStore.find((u) => u.id === bId);
-  if (!a || !b) return delay("");
+  const [{ data: aRow }, { data: bRow }] = await Promise.all([
+    supabase.from("users").select("*").eq("id", aId).maybeSingle(),
+    supabase.from("users").select("*").eq("id", bId).maybeSingle(),
+  ]);
+  const a = aRow as User | null;
+  const b = bRow as User | null;
+  if (!a || !b) return "";
 
   const sharedTopics = a.topics.filter((t) => b.topics.includes(t));
   const sharedLanguages = a.languages.filter((l) => b.languages.includes(l));
 
-  let reason: string;
   if (sharedTopics.length > 0) {
-    reason = `You both share ${sharedTopics.join(" and ")} — ${b.name}'s experience lines up closely with what you're navigating now.`;
-  } else if (sharedLanguages.length > 0) {
-    reason = `You share a language with ${b.name}, which can make it easier to open up about what's on your mind.`;
-  } else {
-    reason = `${b.name}'s background offers a different perspective that could still be valuable for your journey.`;
+    return `You both share ${sharedTopics.join(" and ")} — ${b.name}'s experience lines up closely with what you're navigating now.`;
   }
-  return delay(reason);
+  if (sharedLanguages.length > 0) {
+    return `You share a language with ${b.name}, which can make it easier to open up about what's on your mind.`;
+  }
+  return `${b.name}'s background offers a different perspective that could still be valuable for your journey.`;
+  // MOCK: used usersStore directly — templating logic identical
 }
 
-// TODO(backend): replace with a real Claude-generated summary of the
-// actual conversation transcript once calls are real.
+// TODO(backend): replace with a real LLM-generated summary of the actual
+// conversation transcript once calls are real.
 export async function getStorySummary(_context?: {
   userId?: string;
   topic?: string;
 }): Promise<string> {
-  return delay(
-    "It's never too late to begin again. I re-took my nursing exams at 38. It was hard, but it reminded me that courage grows with each small step.",
-  );
+  return "It's never too late to begin again. I re-took my nursing exams at 38. It was hard, but it reminded me that courage grows with each small step.";
 }
+
+// ─── 4. Requests ──────────────────────────────────────────────────────────
 
 export async function requestCall(
   fromId: string,
   toId: string,
   opts?: { postId?: string; intent?: RequestIntent; topic?: string },
 ): Promise<CallRequest> {
-  const request: CallRequest = {
-    id: `req-${Date.now()}-${nextRequestId++}`,
-    fromId,
-    toId,
-    postId: opts?.postId,
+  const row = {
+    from_id: fromId,
+    to_id: toId,
+    ...(opts?.postId && { post_id: opts.postId }),
     intent: opts?.intent ?? "seek",
-    status: "pending",
-    topic: opts?.topic,
-    createdAt: new Date().toISOString(),
+    status: "pending" as const,
+    ...(opts?.topic && { topic: opts.topic }),
   };
-  requestsStore = [request, ...requestsStore];
-  return delay(request);
+  const { data, error } = await supabase.from("requests").insert(row).select().single();
+  if (error || !data) throw new Error(`[api] requestCall: ${error?.message ?? "no data returned"}`);
+  return toRequest(data as DbRequest);
+  // MOCK: const request = { id: `req-${Date.now()}`, fromId, toId, ...opts, status: "pending", intent: opts?.intent ?? "seek", createdAt: new Date().toISOString() }; requestsStore = [request, ...requestsStore]; return request;
 }
 
 export async function getRequests(userId: string): Promise<CallRequest[]> {
-  return delay(requestsStore.filter((r) => r.toId === userId));
+  const { data, error } = await supabase
+    .from("requests")
+    .select("*")
+    .eq("to_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) { console.error("[api] getRequests:", error.message); return []; }
+  return ((data as DbRequest[]) ?? []).map(toRequest);
+  // MOCK: return requestsStore.filter((r) => r.toId === userId);
 }
 
 export async function respondRequest(
   id: string,
   action: "accept" | "decline",
 ): Promise<CallRequest | undefined> {
-  const request = requestsStore.find((r) => r.id === id);
-  if (request) {
-    request.status = action === "accept" ? "accepted" : "declined";
-  }
-  return delay(request);
+  const status = action === "accept" ? "accepted" : "declined";
+  const { data, error } = await supabase
+    .from("requests")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) { console.error("[api] respondRequest:", error.message); return undefined; }
+  return data ? toRequest(data as DbRequest) : undefined;
+  // MOCK: const request = requestsStore.find((r) => r.id === id); if (request) request.status = action === "accept" ? "accepted" : "declined"; return request;
 }
 
-// TODO(backend): persist interactions server-side for future ML-driven
-// matching once a backend exists. Logged locally for now.
+// ─── 5. Interactions ──────────────────────────────────────────────────────
+
+// TODO(backend): persist interactions server-side for future ML-driven matching.
 export async function logInteraction(
   event: Omit<Interaction, "id" | "createdAt">,
 ): Promise<Interaction> {
-  const interaction: Interaction = {
-    ...event,
-    id: `int-${Date.now()}-${nextInteractionId++}`,
-    createdAt: new Date().toISOString(),
+  const row = {
+    user_id: event.userId,
+    event_type: event.eventType,
+    target_id: event.targetId,
+    ...(event.score != null && { score: event.score }),
   };
-  interactionsStore = [interaction, ...interactionsStore];
-  console.log("[viowise] interaction logged", interaction);
-  return delay(interaction);
+  const { data, error } = await supabase.from("interactions").insert(row).select().single();
+  if (error || !data) {
+    // Non-fatal: return a local-only interaction so a logging failure never
+    // breaks the user-facing flow it's attached to.
+    console.error("[api] logInteraction (non-fatal):", error?.message);
+    return { ...event, id: `int-local-${Date.now()}`, createdAt: new Date().toISOString() };
+  }
+  return toInteraction(data as DbInteraction);
+  // MOCK: const interaction = { ...event, id: `int-${Date.now()}`, createdAt: new Date().toISOString() }; interactionsStore = [...]; return interaction;
 }
