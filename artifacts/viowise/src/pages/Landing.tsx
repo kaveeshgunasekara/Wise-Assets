@@ -24,9 +24,10 @@ export default function Landing() {
       {/* ── Hero ────────────────────────────────────────────────────────── */}
       {/* Image is a background layer; text sits on top via z-index */}
       <main className="flex-1 relative flex flex-col items-center justify-center min-h-[540px]">
-        {/* Background image — covers the hero area, centered */}
+        {/* Background image — dimmed to ~72% opacity so it reads as elegant
+            backdrop rather than competing foreground imagery */}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 opacity-[0.72]"
           style={{
             backgroundImage: "url('/hero-connection.jpeg')",
             backgroundSize: "cover",
@@ -36,20 +37,23 @@ export default function Landing() {
           aria-hidden="true"
         />
 
-        {/* Overlay — radial gradient: strong white at center (behind text),
-            fading to translucent at edges so faces stay visible.
-            The two passes give good coverage without washing out the image. */}
+        {/* Overlay — wide radial: near-opaque white at the text zone (center),
+            fading gently so faces remain softly visible at the periphery.
+            Also a subtle top-to-bottom fade to anchor the footer edge. */}
         <div
           className="absolute inset-0"
           style={{
-            background:
-              "radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.52) 50%, rgba(255,255,255,0.18) 100%)",
+            background: [
+              "radial-gradient(ellipse 65% 75% at 50% 48%, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.75) 35%, rgba(255,255,255,0.40) 65%, rgba(255,255,255,0.10) 100%)",
+              "linear-gradient(to bottom, rgba(248,247,255,0.30) 0%, transparent 30%, transparent 70%, rgba(248,247,255,0.30) 100%)",
+            ].join(", "),
           }}
           aria-hidden="true"
         />
 
-        {/* Content — sits above both layers */}
-        <div className="relative z-10 flex flex-col items-center text-center px-6 py-16 max-w-4xl mx-auto w-full">
+        {/* Content — sits above both layers; generous vertical padding so text
+            is well clear of the portrait bubbles on all screen sizes */}
+        <div className="relative z-10 flex flex-col items-center text-center px-8 py-20 max-w-4xl mx-auto w-full">
           <span className="text-primary text-[16px] uppercase tracking-widest font-semibold mb-6">CONNECTING GENERATIONS</span>
           <h1 className="text-[56px] leading-tight font-serif font-normal italic text-foreground mb-6">
             Your experience is someone's answer.
