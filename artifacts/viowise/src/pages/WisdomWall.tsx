@@ -306,150 +306,78 @@ export default function WisdomWall() {
             {/* ── Received ── */}
             <section>
               <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Received</h2>
-              {(() => {
-                const pendingReceived = myRequests.filter(r => r.status === "pending");
-                const pastReceived    = myRequests.filter(r => r.status !== "pending");
-                const receivedStatusLabel = (s: string) =>
-                  s === "accepted" ? "Accepted" : s === "completed" ? "Call completed" : "Declined";
-                return (
-                  <>
-                    <div className="space-y-4">
-                      {pendingReceived.map(req => {
-                        const fromUser = users.find(u => u.id === req.fromId);
-                        return (
-                          <div key={req.id} className="bg-white p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
-                              <div>
-                                <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
-                                <p className="text-foreground/70">
-                                  {req.intent === "seek" ? "would like your advice" : "would like to help"}
-                                  <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
-                                    {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex gap-3 shrink-0">
-                              <button onClick={() => handleRespond(req, "decline")} className="px-6 py-3 border border-border rounded-[12px] font-medium hover:bg-secondary">Decline</button>
-                              <button onClick={() => handleRespond(req, "accept")} className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover">Accept</button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {pendingReceived.length === 0 && (
-                        <p className="text-foreground/60 py-4">No pending requests.</p>
-                      )}
-                    </div>
-
-                    {pastReceived.length > 0 && (
-                      <div className="mt-8">
-                        <h3 className="text-[14px] font-semibold text-foreground/40 uppercase tracking-widest mb-3">History</h3>
-                        <div className="space-y-3">
-                          {pastReceived.map(req => {
-                            const fromUser = users.find(u => u.id === req.fromId);
-                            return (
-                              <div key={req.id} className="p-5 rounded-[16px] border border-border bg-secondary/30 flex flex-col sm:flex-row gap-4 justify-between items-center opacity-60">
-                                <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 rounded-full bg-foreground/10 text-foreground/50 flex items-center justify-center font-serif text-lg">{fromUser?.name?.[0] ?? "?"}</div>
-                                  <div>
-                                    <h3 className="font-semibold text-[16px] text-foreground/70">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
-                                    <p className="text-foreground/50 text-base">{req.intent === "seek" ? "would like your advice" : "would like to help"}</p>
-                                  </div>
-                                </div>
-                                <span className="text-foreground/50 font-medium text-[15px] shrink-0">{receivedStatusLabel(req.status)}</span>
-                              </div>
-                            );
-                          })}
+              <div className="space-y-4">
+                {myRequests.filter(r => r.status === "pending").map(req => {
+                  const fromUser = users.find(u => u.id === req.fromId);
+                  return (
+                    <div key={req.id} className="bg-white p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
+                        <div>
+                          <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
+                          <p className="text-foreground/70">
+                            {req.intent === "seek" ? "would like your advice" : "would like to help"}
+                            <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
+                              {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
+                            </span>
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </>
-                );
-              })()}
+                      <div className="flex gap-3 shrink-0">
+                        <button onClick={() => handleRespond(req, "decline")} className="px-6 py-3 border border-border rounded-[12px] font-medium hover:bg-secondary">Decline</button>
+                        <button onClick={() => handleRespond(req, "accept")} className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover">Accept</button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {myRequests.filter(r => r.status === "pending").length === 0 && (
+                  <p className="text-foreground/60 py-4">No pending requests.</p>
+                )}
+              </div>
             </section>
 
             {/* ── Sent ── */}
             <section>
               <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Sent</h2>
-              {(() => {
-                // Active = things that still need attention (awaiting a response, or accepted and ready to join)
-                const activeSent = sentRequests.filter(r => r.status === "pending" || r.status === "accepted");
-                // History = resolved (declined or completed calls)
-                const pastSent   = sentRequests.filter(r => r.status === "declined" || r.status === "completed");
-                return (
-                  <>
-                    <div className="space-y-4">
-                      {activeSent.map(req => {
-                        const toUser = users.find(u => u.id === req.toId);
-                        const isAccepted = req.status === "accepted";
-                        return (
-                          <div
-                            key={req.id}
-                            className={`p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{toUser?.name?.[0] ?? "?"}</div>
-                              <div>
-                                <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
-                                <p className="text-foreground/70">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
-                              </div>
-                            </div>
-                            {isAccepted ? (
-                              <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
-                                <span className="flex items-center gap-1.5 text-[#2D8B4E] font-semibold text-[16px]">
-                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                  Accepted
-                                </span>
-                                <button
-                                  onClick={() => { setCallPartnerId(req.toId); setLocation("/pre-call"); }}
-                                  className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover"
-                                >
-                                  Join call
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px] shrink-0">Awaiting response</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                      {activeSent.length === 0 && pastSent.length === 0 && (
-                        <p className="text-foreground/60 py-4">No requests sent yet.</p>
-                      )}
-                    </div>
-
-                    {pastSent.length > 0 && (
-                      <div className="mt-8">
-                        <h3 className="text-[14px] font-semibold text-foreground/40 uppercase tracking-widest mb-3">History</h3>
-                        <div className="space-y-3">
-                          {pastSent.map(req => {
-                            const toUser = users.find(u => u.id === req.toId);
-                            const isCompleted = req.status === "completed";
-                            return (
-                              <div key={req.id} className="p-5 rounded-[16px] border border-border bg-secondary/30 flex flex-col sm:flex-row gap-4 justify-between items-center opacity-60">
-                                <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 rounded-full bg-foreground/10 text-foreground/50 flex items-center justify-center font-serif text-lg">{toUser?.name?.[0] ?? "?"}</div>
-                                  <div>
-                                    <h3 className="font-semibold text-[16px] text-foreground/70">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
-                                    <p className="text-foreground/50 text-base">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
-                                  </div>
-                                </div>
-                                <span className="flex items-center gap-1.5 text-foreground/50 font-medium text-[15px] shrink-0">
-                                  {isCompleted && (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                  )}
-                                  {isCompleted ? "Call completed" : "Declined"}
-                                </span>
-                              </div>
-                            );
-                          })}
+              <div className="space-y-4">
+                {sentRequests.filter(r => r.status === "pending" || r.status === "accepted").map(req => {
+                  const toUser = users.find(u => u.id === req.toId);
+                  const isAccepted = req.status === "accepted";
+                  return (
+                    <div
+                      key={req.id}
+                      className={`p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{toUser?.name?.[0] ?? "?"}</div>
+                        <div>
+                          <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
+                          <p className="text-foreground/70">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
                         </div>
                       </div>
-                    )}
-                  </>
-                );
-              })()}
+                      {isAccepted ? (
+                        <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+                          <span className="flex items-center gap-1.5 text-[#2D8B4E] font-semibold text-[16px]">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Accepted
+                          </span>
+                          <button
+                            onClick={() => { setCallPartnerId(req.toId); setLocation("/pre-call"); }}
+                            className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover"
+                          >
+                            Join call
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px] shrink-0">Awaiting response</span>
+                      )}
+                    </div>
+                  );
+                })}
+                {sentRequests.filter(r => r.status === "pending" || r.status === "accepted").length === 0 && (
+                  <p className="text-foreground/60 py-4">No active requests sent.</p>
+                )}
+              </div>
             </section>
 
           </div>
