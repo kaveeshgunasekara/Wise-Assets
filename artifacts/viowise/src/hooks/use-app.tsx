@@ -64,11 +64,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [callPartnerId, setCallPartnerId] = useState<string | null>(null);
 
   // Load the users-table profile for a given auth UID and set it in context.
+  // Retries once after 1 s in case the handle_new_user trigger hasn't committed
+  // yet (rare but possible). If the profile is still missing after the retry,
+  // logs a clear error and signs the user out so they're never left in a broken
+  // null-user state with a live session.
   const loadProfile = useCallback(async (userId: string) => {
-    const profile = await getUserById(userId);
+    let profile = await getUserById(userId);
+
+    if (!profile) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      profile = await getUserById(userId);
+    }
+
     if (profile) {
       setUser(profile);
       setRole(profile.role);
+    } else {
+      console.error(
+        `[auth] No users-table row found for auth UID ${userId} after retry. ` +
+        "Check that the handle_new_user trigger is installed and firing correctly. " +
+        "Signing the user out to avoid a broken null-user session.",
+      );
+      await supabase.auth.signOut();
+      setUser(null);
+      setRole(null);
     }
   }, []);
 

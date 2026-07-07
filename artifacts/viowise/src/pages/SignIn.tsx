@@ -37,11 +37,18 @@ export default function SignIn() {
     // non-null user immediately (onAuthStateChange will fire too, but this
     // avoids any race between the navigation and the async profile load).
     const profile = await getUserById(data.user.id);
-    if (profile) {
-      setUser(profile);
-      setRole(profile.role);
+    if (!profile) {
+      // Auth succeeded but no matching row in public.users. Don't navigate —
+      // going to /wall with a null user would just bounce back to sign-in with
+      // no explanation. Show a clear message instead.
+      setError("We couldn't load your profile. Please try again in a moment.");
+      await supabase.auth.signOut();
+      setSigningIn(false);
+      return;
     }
 
+    setUser(profile);
+    setRole(profile.role);
     setSigningIn(false);
     setLocation("/wall");
   };
