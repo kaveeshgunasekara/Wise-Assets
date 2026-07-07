@@ -105,7 +105,7 @@ export default function WisdomWall() {
   const handleRequestCall = async (post: Post, author?: User) => {
     if (!user || !author) return;
     const intent: RequestIntent = role === "mentor" ? "offer" : "seek";
-    await requestCall(user.id, author.id, { postId: post.id, intent, topic: post.topic });
+    await requestCall(user.id, author.id, { postId: post.id, intent });
     setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
   };
 
@@ -268,7 +268,7 @@ export default function WisdomWall() {
                     <div>
                       <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
                       <p className="text-foreground/70">
-                        {intentLabel}{req.topic ? <> about <span className="font-medium">{req.topic}</span></> : null}
+                        {intentLabel}
                         <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
                           {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
                         </span>

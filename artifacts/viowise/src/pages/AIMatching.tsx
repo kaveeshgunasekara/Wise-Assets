@@ -55,8 +55,7 @@ export default function AIMatching() {
   const handleRequestCall = async (m: Match) => {
     if (!user) return;
     const intent: RequestIntent = role === "mentor" ? "offer" : "seek";
-    const topic = m.sharedTopics[0];
-    await requestCall(user.id, m.user.id, { intent, topic });
+    await requestCall(user.id, m.user.id, { intent });
     setSentIds((prev) => ({ ...prev, [m.user.id]: true }));
   };
 

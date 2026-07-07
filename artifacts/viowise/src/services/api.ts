@@ -283,7 +283,7 @@ export async function getStorySummary(_context?: {
 export async function requestCall(
   fromId: string,
   toId: string,
-  opts?: { postId?: string; intent?: RequestIntent; topic?: string },
+  opts?: { postId?: string; intent?: RequestIntent },
 ): Promise<CallRequest> {
   const row = {
     from_id: fromId,
@@ -291,7 +291,6 @@ export async function requestCall(
     ...(opts?.postId && { post_id: opts.postId }),
     intent: opts?.intent ?? "seek",
     status: "pending" as const,
-    ...(opts?.topic && { topic: opts.topic }),
   };
   const { data, error } = await supabase.from("requests").insert(row).select().single();
   if (error || !data) throw new Error(`[api] requestCall: ${error?.message ?? "no data returned"}`);
