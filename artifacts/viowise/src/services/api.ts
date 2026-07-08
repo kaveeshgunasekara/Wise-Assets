@@ -361,13 +361,18 @@ export async function respondRequest(
 // Marks the accepted request between two users as completed once their call ends.
 // Matches in either direction (caller may be from_id or to_id).
 export async function completeRequest(userId: string, partnerId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("requests")
     .update({ status: "completed" })
     .eq("status", "accepted")
     .or(
       `and(from_id.eq.${userId},to_id.eq.${partnerId}),and(from_id.eq.${partnerId},to_id.eq.${userId})`,
-    );
+    )
+    .select();
+  // DIAGNOSTIC (temporary): confirms whether the update actually touched a row.
+  // If `data` is an empty array with no `error`, RLS silently blocked the update —
+  // Postgrest does not raise an error when a policy filters out all target rows.
+  console.log("[api] completeRequest result — userId:", userId, "partnerId:", partnerId, "updatedRows:", data, "error:", error);
   if (error) console.error("[api] completeRequest:", error.message);
 }
 
