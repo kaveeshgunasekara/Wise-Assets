@@ -14,6 +14,7 @@ import {
   respondRequest,
   logInteraction,
 } from "@/services/api";
+import { supabase } from "@/services/supabase";
 import type { Post, User, Match, CallRequest, RequestIntent } from "@/types";
 import { useLocation } from "wouter";
 
@@ -76,6 +77,33 @@ export default function WisdomWall() {
       setSentRequests(fetchedSent);
     })();
   }, [user]);
+
+  // Realtime: re-fetch requests whenever any row targeting OR sent by this user changes.
+  // This makes incoming requests appear live for the mentor, and the "Join call"
+  // button appear live for the learner when their request is accepted — no reload needed.
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`requests-user-${user.id}`)
+      // Rows where this user is the RECIPIENT (incoming requests, status changes)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "requests", filter: `to_id=eq.${user.id}` },
+        () => { refreshRequests(); },
+      )
+      // Rows where this user is the SENDER (e.g. their pending → accepted)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "requests", filter: `from_id=eq.${user.id}` },
+        () => { refreshRequests(); },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, refreshRequests]);
 
   const authorOf = (post: Post) => users.find((u) => u.id === post.authorId);
 
@@ -159,6 +187,7 @@ export default function WisdomWall() {
     await respondRequest(req.id, action);
     if (action === "accept") {
       logInteraction({ userId: user!.id, eventType: "accepted", targetId: req.fromId }).catch(() => {});
+      await refreshRequests();
       setCallPartnerId(req.fromId);
       setLocation("/pre-call");
     } else {
