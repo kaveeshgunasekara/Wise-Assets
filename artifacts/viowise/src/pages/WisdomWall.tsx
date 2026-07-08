@@ -14,7 +14,6 @@ import {
   respondRequest,
   logInteraction,
 } from "@/services/api";
-import { supabase } from "@/services/supabase";
 import type { Post, User, Match, CallRequest, RequestIntent } from "@/types";
 import { useLocation } from "wouter";
 
@@ -78,31 +77,13 @@ export default function WisdomWall() {
     })();
   }, [user]);
 
-  // Realtime: re-fetch requests whenever any row targeting OR sent by this user changes.
-  // This makes incoming requests appear live for the mentor, and the "Join call"
-  // button appear live for the learner when their request is accepted — no reload needed.
+  // Poll requests every 5 seconds so the Received list, Sent list, and badge count
+  // stay current without a manual reload. This lets a mentor see incoming requests
+  // and a learner see their request accepted ("Join call" appears) within ~5 seconds.
   useEffect(() => {
     if (!user) return;
-
-    const channel = supabase
-      .channel(`requests-user-${user.id}`)
-      // Rows where this user is the RECIPIENT (incoming requests, status changes)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "requests", filter: `to_id=eq.${user.id}` },
-        () => { refreshRequests(); },
-      )
-      // Rows where this user is the SENDER (e.g. their pending → accepted)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "requests", filter: `from_id=eq.${user.id}` },
-        () => { refreshRequests(); },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const id = setInterval(() => { refreshRequests(); }, 5000);
+    return () => clearInterval(id);
   }, [user, refreshRequests]);
 
   const authorOf = (post: Post) => users.find((u) => u.id === post.authorId);
