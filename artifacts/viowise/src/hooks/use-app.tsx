@@ -96,20 +96,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // don't need a separate getSession() call.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (session?.user) {
-          // Load the users-table profile (created by the handle_new_user trigger
-          // on sign-up, or pre-existing for returning users).
-          await loadProfile(session.user.id);
+          // Defer the DB call out of the onAuthStateChange callback so Supabase
+          // finishes attaching the session token to the client before the query
+          // runs. Without this deferral the query can fire unauthenticated,
+          // causing RLS to block the read and return null even when the row exists.
+          const userId = session.user.id;
+          setTimeout(() => {
+            loadProfile(userId).then(() => {
+              if (event === "INITIAL_SESSION") setAuthLoading(false);
+            });
+          }, 0);
         } else {
           // SIGNED_OUT or no session at all.
           setUser(null);
           setRole(null);
-        }
-        // After the first event (INITIAL_SESSION) resolves, we know whether
-        // there's a live session, so we can unlock auth-guarded routes.
-        if (event === "INITIAL_SESSION") {
-          setAuthLoading(false);
+          if (event === "INITIAL_SESSION") setAuthLoading(false);
         }
       },
     );
