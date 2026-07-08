@@ -5,6 +5,7 @@ import AccessibilityControl from "@/components/AccessibilityControl";
 import TopicSelect from "@/components/TopicSelect";
 import { supabase } from "@/services/supabase";
 import { getUserById, updateUser } from "@/services/api";
+import { isAgeRoleConsistent } from "@/lib/age-role";
 
 const LANGUAGE_OPTIONS = [
   "English",
@@ -57,6 +58,17 @@ export default function TopicSelection() {
     e.preventDefault();
     if (!role) {
       setError("We lost track of whether you're a mentor or learner. Please start sign-up again.");
+      return;
+    }
+    // Final guard before creating the account: age and role must still agree.
+    // This should be unreachable in the normal flow (role is always derived
+    // from age on the sign-up step), but we never let a mismatched profile
+    // get created even if pendingAge was somehow changed after that step.
+    if (!isAgeRoleConsistent(Number(pendingAge), role)) {
+      setError(
+        "VIOWISE connects mentors (60+) who share wisdom with learners (under 60) who seek it. " +
+          "Your age and role don't match — please go back and re-enter your age.",
+      );
       return;
     }
     setError(null);

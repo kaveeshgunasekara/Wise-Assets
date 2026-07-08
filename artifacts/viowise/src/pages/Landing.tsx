@@ -1,10 +1,7 @@
 import { Link } from "wouter";
-import { useApp } from "@/hooks/use-app";
 import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function Landing() {
-  const { setRole } = useApp();
-
   return (
     <div className="min-h-screen bg-pattern relative overflow-hidden flex flex-col">
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -65,14 +62,12 @@ export default function Landing() {
           <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl">
             <Link
               href="/sign-up"
-              onClick={() => setRole("mentor")}
               className="flex-1 bg-primary text-white text-[18px] font-medium py-4 px-6 rounded-xl hover:bg-primary-hover transition-colors shadow-lg"
             >
               I want to share my wisdom
             </Link>
             <Link
               href="/sign-up"
-              onClick={() => setRole("learner")}
               className="flex-1 bg-white text-primary text-[18px] font-medium py-4 px-6 rounded-xl border border-primary/20 hover:bg-primary/5 transition-colors shadow-lg"
             >
               I want to learn from experience

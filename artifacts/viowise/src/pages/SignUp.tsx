@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AccessibilityControl from "@/components/AccessibilityControl";
+import { AGE_ROLE_EXPLANATION, isAgeRoleConsistent, MENTOR_MIN_AGE, roleForAge } from "@/lib/age-role";
 
 export default function SignUp() {
   const {
@@ -15,9 +16,19 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [roleError, setRoleError] = useState(false);
 
+  // Role is derived from age, never chosen directly — this is the only place
+  // `role` is set for a fresh sign-up, so it can never drift out of sync with
+  // age. Runs on every render where pendingAge changes, including if the user
+  // navigates back to this step and edits their age again.
+  const ageNumber = Number(pendingAge);
+  const derivedRole = roleForAge(ageNumber);
+  useEffect(() => {
+    setRole(derivedRole);
+  }, [derivedRole, setRole]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!role) {
+    if (!derivedRole || !isAgeRoleConsistent(ageNumber, role)) {
       setRoleError(true);
       return;
     }
@@ -42,30 +53,7 @@ export default function SignUp() {
           <p className="text-primary text-[16px] uppercase tracking-widest font-semibold mb-2">Step 1 of 4</p>
           <h1 className="text-[40px] font-serif text-foreground mb-6 leading-tight">Create your account</h1>
 
-          <div className="flex gap-4 mb-2">
-            <button
-              type="button"
-              onClick={() => { setRole("mentor"); setRoleError(false); }}
-              aria-pressed={role === "mentor"}
-              className={`flex-1 p-4 rounded-xl border-2 text-left transition-colors ${role === "mentor" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center font-serif text-xl mb-3">M</div>
-              <p className="font-medium">Mentor</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setRole("learner"); setRoleError(false); }}
-              aria-pressed={role === "learner"}
-              className={`flex-1 p-4 rounded-xl border-2 text-left transition-colors ${role === "learner" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/20 text-primary flex items-center justify-center font-serif text-xl mb-3">L</div>
-              <p className="font-medium">Learner</p>
-            </button>
-          </div>
-          {roleError && (
-            <p className="text-[16px] text-destructive mb-6" role="alert">Please choose Mentor or Learner to continue.</p>
-          )}
-          {!roleError && <div className="mb-6" />}
+          <p className="text-[16px] text-foreground/70 mb-6 leading-relaxed">{AGE_ROLE_EXPLANATION}</p>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
@@ -87,10 +75,36 @@ export default function SignUp() {
                 min={13}
                 max={120}
                 value={pendingAge}
-                onChange={(e) => setPendingAge(e.target.value)}
+                onChange={(e) => { setPendingAge(e.target.value); setRoleError(false); }}
                 placeholder="Your age"
                 className="w-full px-4 h-[48px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none"
               />
+              {derivedRole && (
+                <p className="mt-3 flex items-center gap-3 text-[16px]" aria-live="polite">
+                  <span
+                    className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-serif text-sm ${derivedRole === "mentor" ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary"}`}
+                    aria-hidden="true"
+                  >
+                    {derivedRole === "mentor" ? "M" : "L"}
+                  </span>
+                  <span className="text-foreground/80">
+                    You'll join as a{" "}
+                    <span className="font-medium text-foreground">
+                      {derivedRole === "mentor" ? "Mentor" : "Learner"}
+                    </span>
+                    {derivedRole === "mentor"
+                      ? " — sharing your wisdom with those who seek it."
+                      : " — learning from those who've lived it."}
+                  </span>
+                </p>
+              )}
+              {roleError && (
+                <p className="mt-3 text-[16px] text-destructive" role="alert">
+                  {pendingAge
+                    ? `Please double-check your age — mentors are ${MENTOR_MIN_AGE}+ and learners are under ${MENTOR_MIN_AGE}.`
+                    : "Please enter your age so we know whether you'll join as a mentor or learner."}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-[16px] font-medium mb-2">Email</label>
