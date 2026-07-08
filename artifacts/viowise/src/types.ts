@@ -40,7 +40,6 @@ export interface CallRequest {
   postId?: string;
   intent: RequestIntent;
   status: RequestStatus;
-  topic?: string;
   createdAt: string;
 }
 
