@@ -33,25 +33,50 @@ export default function VideoCall() {
 
   // Step 1: create/fetch the Daily room via Edge Function
   useEffect(() => {
-    if (!user || !callPartnerId) return;
+    console.log("[VideoCall] effect fired — user:", user?.id, "callPartnerId:", callPartnerId);
+
+    if (!user || !callPartnerId) {
+      console.warn("[VideoCall] bailing out — missing user or callPartnerId. user:", user, "callPartnerId:", callPartnerId);
+      return;
+    }
 
     let cancelled = false;
 
     (async () => {
       try {
+        console.log("[VideoCall] invoking create-daily-room with", { userA: user.id, userB: callPartnerId });
+
         const { data, error } = await supabase.functions.invoke("create-daily-room", {
           body: { userA: user.id, userB: callPartnerId },
         });
 
+        console.log("[VideoCall] Edge Function response — data:", data, "error:", error);
+
         if (cancelled) return;
-        if (error || !data?.url) {
+
+        if (error) {
+          console.error("[VideoCall] Edge Function returned an error:", error);
           setCallError("Could not start the video call. Please try again.");
           setConnecting(false);
           return;
         }
 
+        if (!data?.url) {
+          console.error("[VideoCall] Edge Function returned no URL. Full data:", data);
+          setCallError("Could not start the video call. Please try again.");
+          setConnecting(false);
+          return;
+        }
+
+        console.log("[VideoCall] room URL received:", data.url);
+
         // Step 2: embed Daily prebuilt UI once we have the room URL
-        if (!callContainerRef.current) return;
+        if (!callContainerRef.current) {
+          console.error("[VideoCall] callContainerRef is null — cannot mount Daily frame");
+          return;
+        }
+
+        console.log("[VideoCall] creating Daily frame in container:", callContainerRef.current);
 
         const frame = DailyIframe.createFrame(callContainerRef.current, {
           iframeStyle: {
@@ -70,18 +95,23 @@ export default function VideoCall() {
         callFrameRef.current = frame;
 
         frame.on("joined-meeting", () => {
+          console.log("[VideoCall] joined-meeting event fired");
           if (!cancelled) setConnecting(false);
         });
 
-        frame.on("error", () => {
+        frame.on("error", (evt) => {
+          console.error("[VideoCall] Daily error event:", evt);
           if (!cancelled)
             setCallError(
               "Camera or microphone permission was denied, or the call encountered an error. Check your browser permissions and try again."
             );
         });
 
+        console.log("[VideoCall] calling frame.join with url:", data.url);
         await frame.join({ url: data.url });
-      } catch {
+        console.log("[VideoCall] frame.join resolved (call is live)");
+      } catch (err) {
+        console.error("[VideoCall] caught unexpected error:", err);
         if (!cancelled) {
           setCallError("Could not join the call. Check your camera and microphone permissions.");
           setConnecting(false);
