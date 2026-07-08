@@ -112,7 +112,7 @@ export default function VideoCall() {
             );
         });
 
-        await frame.join({ url: data.url });
+        await frame.join({ url: data.url, userName: user.name });
       } catch (err) {
         console.error("[VideoCall] caught unexpected error:", err);
         if (!cancelled) {
