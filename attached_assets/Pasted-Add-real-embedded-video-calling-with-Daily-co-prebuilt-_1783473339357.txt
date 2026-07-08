@@ -1,0 +1,40 @@
+Add real embedded video calling with Daily.co (prebuilt UI). This is a Vite + React + TypeScript app with Supabase already connected. Currently the VideoCall page shows a MOCKED static portrait — replace that with a real Daily.co embedded call. Keep everything else (pre-call consent before, story-capture flow after) intact.
+
+Work in these steps and tell me clearly what I must do manually (Daily key, Edge Function deploy).
+
+STEP 1 — Install
+Run: npm install @daily-co/daily-js
+
+STEP 2 — Server-side room creation (Daily API key must NEVER be in frontend)
+Create a Supabase Edge Function named "create-daily-room" with this behavior:
+- Reads the Daily API key from the environment variable DAILY_API_KEY
+- Accepts two user IDs in the request body (userA, userB)
+- Builds a DETERMINISTIC room name by sorting the two IDs so both users generate the SAME room, e.g. `viowise-${[userA,userB].sort().join("-").slice(0,40)}`
+- Calls Daily REST API: POST https://api.daily.co/v1/rooms
+  headers: Authorization: Bearer DAILY_API_KEY, Content-Type: application/json
+  body: { name: <roomName>, properties: { exp: Math.floor(Date.now()/1000)+3600, enable_prejoin_ui: false, enable_chat: true } }
+- If Daily returns "room already exists" (HTTP 400 with that reason), fetch and return the existing room instead of failing
+- Returns JSON: { url: "https://<MY_SUBDOMAIN>.daily.co/<roomName>" }
+- Include proper CORS headers so the frontend can call it
+Give me the COMPLETE Edge Function code (TypeScript, Deno format for Supabase) ready to paste, and tell me: (a) the exact steps to deploy it via the Supabase dashboard Edge Functions editor, and (b) how to set the DAILY_API_KEY secret in Supabase. Ask me for my Daily subdomain and use it in the returned URL.
+
+STEP 3 — Frontend: embed the call on the VideoCall page
+- When the VideoCall page mounts (user has already passed the pre-call consent screen), call the create-daily-room Edge Function via supabase.functions.invoke("create-daily-room", { body: { userA: user.id, userB: callPartnerId } }) to get the room URL.
+- Show a "Connecting…" loading state while the room is being created.
+- Use DailyIframe.createFrame() to embed Daily's PREBUILT call UI filling the video area, and .join({ url }) into the returned room.
+- Replace the mocked static portrait/subtitle mock with this real Daily call frame. (Comment out the mock code, don't delete it, so I can revert.)
+- Handle errors clearly: if room creation fails or camera/mic permission is denied, show a friendly message and a "Back to Wisdom Wall" link.
+
+STEP 4 — End call
+- Keep the existing "End call" button. On click: callFrame.leave() then callFrame.destroy(), then navigate to the story-capture flow if storyCaptureConsent is on, else back to /wall — exactly like the mock did.
+- Also destroy the call frame on component unmount to avoid leaks.
+
+STEP 5 — Preserve the rest
+- Do NOT change the pre-call consent screen (it still runs before this page).
+- Do NOT change the story-capture flow (it still runs after End call).
+- Do NOT put the Daily API key anywhere in frontend code or Vite env — it lives ONLY in the Supabase Edge Function secret.
+
+After implementing, tell me EXACTLY:
+1. My Daily subdomain is needed — ask me for it.
+2. The steps to deploy the Edge Function and set DAILY_API_KEY in Supabase.
+3. How to test a call between two browser windows (e.g. log in as two different users, both join).
