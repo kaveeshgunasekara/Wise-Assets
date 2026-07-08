@@ -108,9 +108,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  console.log("[api] getUserById raw response — id:", id, "data:", data, "error:", error);
   if (error) { console.error("[api] getUserById error:", error.code, error.message, error.details); return undefined; }
-  if (!data) { console.warn("[api] getUserById: query returned null for id:", id, "— likely an RLS block (anon session) or missing row"); }
   return (data as User) ?? undefined;
   // MOCK: return usersStore.find((u) => u.id === id);
 }

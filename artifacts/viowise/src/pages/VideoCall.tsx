@@ -46,24 +46,15 @@ export default function VideoCall() {
 
   // Step 1: create/fetch the Daily room via Edge Function
   useEffect(() => {
-    console.log("[VideoCall] effect fired — user:", user?.id, "callPartnerId:", callPartnerId);
-
-    if (!user || !callPartnerId) {
-      console.warn("[VideoCall] bailing out — missing user or callPartnerId. user:", user, "callPartnerId:", callPartnerId);
-      return;
-    }
+    if (!user || !callPartnerId) return;
 
     let cancelled = false;
 
     (async () => {
       try {
-        console.log("[VideoCall] invoking create-daily-room with", { userA: user.id, userB: callPartnerId });
-
         const { data, error } = await supabase.functions.invoke("create-daily-room", {
           body: { userA: user.id, userB: callPartnerId },
         });
-
-        console.log("[VideoCall] Edge Function response — data:", data, "error:", error);
 
         if (cancelled) return;
 
@@ -81,15 +72,11 @@ export default function VideoCall() {
           return;
         }
 
-        console.log("[VideoCall] room URL received:", data.url);
-
         // Step 2: embed Daily prebuilt UI once we have the room URL
         if (!callContainerRef.current) {
           console.error("[VideoCall] callContainerRef is null — cannot mount Daily frame");
           return;
         }
-
-        console.log("[VideoCall] creating Daily frame in container:", callContainerRef.current);
 
         const frame = DailyIframe.createFrame(callContainerRef.current, {
           iframeStyle: {
@@ -108,7 +95,6 @@ export default function VideoCall() {
         callFrameRef.current = frame;
 
         frame.on("joined-meeting", () => {
-          console.log("[VideoCall] joined-meeting event fired");
           if (!cancelled) setConnecting(false);
         });
 
@@ -126,9 +112,7 @@ export default function VideoCall() {
             );
         });
 
-        console.log("[VideoCall] calling frame.join with url:", data.url);
         await frame.join({ url: data.url });
-        console.log("[VideoCall] frame.join resolved (call is live)");
       } catch (err) {
         console.error("[VideoCall] caught unexpected error:", err);
         if (!cancelled) {
