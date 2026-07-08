@@ -30,6 +30,19 @@ export default function VideoCall() {
   const callFrameRef = useRef<DailyCall | null>(null);
   const [connecting, setConnecting] = useState(true);
   const [callError, setCallError] = useState<string | null>(null);
+  const [partnerLeft, setPartnerLeft] = useState(false);
+
+  // When the other participant leaves, show a message then auto-navigate after 2 s.
+  useEffect(() => {
+    if (!partnerLeft) return;
+    const timer = setTimeout(() => {
+      if (user && callPartnerId) {
+        completeRequest(user.id, callPartnerId).catch(() => {});
+      }
+      setLocation(storyCaptureConsent ? "/story-capture" : "/wall");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [partnerLeft, user, callPartnerId, storyCaptureConsent, setLocation]);
 
   // Step 1: create/fetch the Daily room via Edge Function
   useEffect(() => {
@@ -97,6 +110,12 @@ export default function VideoCall() {
         frame.on("joined-meeting", () => {
           console.log("[VideoCall] joined-meeting event fired");
           if (!cancelled) setConnecting(false);
+        });
+
+        frame.on("participant-left", () => {
+          // Any participant-left while we're still in the room means the partner left.
+          // (Our own leave is handled by handleEndCall which destroys the frame first.)
+          if (!cancelled) setPartnerLeft(true);
         });
 
         frame.on("error", (evt) => {
@@ -279,6 +298,16 @@ export default function VideoCall() {
           </div>
         )}
       </div>
+
+      {/* ── Partner-left banner ─────────────────────────────────────────── */}
+      {partnerLeft && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-white/10 border border-white/20 rounded-[16px] px-8 py-6 text-center shadow-2xl max-w-sm mx-6">
+            <p className="text-[20px] font-medium text-white mb-2">The other person has left the call.</p>
+            <p className="text-[15px] text-white/60">Taking you out now…</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Prompt card ────────────────────────────────────────────────── */}
       {!callError && !connecting && promptVisible && (
