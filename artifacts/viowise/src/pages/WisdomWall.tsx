@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import AppNav from "@/components/AppNav";
 import { useApp } from "@/hooks/use-app";
 import {
@@ -16,6 +16,36 @@ import {
 } from "@/services/api";
 import type { Post, User, Match, CallRequest, RequestIntent } from "@/types";
 import { useLocation } from "wouter";
+
+function WallSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6" aria-busy="true" aria-label="Loading posts">
+      {[0, 1, 2, 4].map((i) => (
+        <div key={i} className="bg-white p-8 rounded-[18px] card-shadow flex flex-col gap-4">
+          <div className="flex gap-2">
+            <div className="skeleton h-7 w-20 rounded-full" />
+            <div className="skeleton h-7 w-16 rounded-full" />
+          </div>
+          <div className="skeleton h-6 w-full mt-2" />
+          <div className="skeleton h-6 w-5/6" />
+          <div className="skeleton h-6 w-4/6 mb-4" />
+          <div className="border-t border-border pt-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="skeleton w-12 h-12 rounded-full" />
+              <div className="flex flex-col gap-2">
+                <div className="skeleton h-4 w-28" />
+                <div className="skeleton h-3 w-20" />
+              </div>
+            </div>
+            <div className="skeleton h-10 w-32 rounded-[12px]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const TABS = ["Wisdom", "Community", "My posts", "Requests"] as const;
 
 export default function WisdomWall() {
   const { role, user, setCallPartnerId } = useApp();
@@ -36,6 +66,18 @@ export default function WisdomWall() {
   const [composerQuote, setComposerQuote] = useState("");
   const [composerTopic, setComposerTopic] = useState("Career");
   const [posting, setPosting] = useState(false);
+
+  // Tab sliding indicator
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+
+  useLayoutEffect(() => {
+    const activeIndex = TABS.indexOf(tab as typeof TABS[number]);
+    const el = tabRefs.current[activeIndex];
+    if (el) {
+      setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
+    }
+  }, [tab]);
 
   const topics = ["Career", "Family", "Migration", "Health", "Confidence", "Study", "Relationships", "Resilience"];
 
@@ -77,9 +119,6 @@ export default function WisdomWall() {
     })();
   }, [user]);
 
-  // Poll requests every 5 seconds so the Received list, Sent list, and badge count
-  // stay current without a manual reload. This lets a mentor see incoming requests
-  // and a learner see their request accepted ("Join call" appears) within ~5 seconds.
   useEffect(() => {
     if (!user) return;
     const id = setInterval(() => { refreshRequests(); }, 5000);
@@ -104,28 +143,18 @@ export default function WisdomWall() {
     await refreshPosts();
   };
 
-  // Ranks posts by relevance to the viewer. Used by both "Wisdom" and "Community".
-  // "Wisdom" pre-filters to opposite-role authors before scoring, so no role signal
-  // is needed here — topic overlap drives the ordering, language is secondary.
-  //
-  // Points:
-  //   +50  post topic is in the viewer's own topics list
-  //   +15  author shares at least one language with the viewer
-  //   tiny recency tiebreaker (≈ 0.17 for a recent post) — won't override real signals
   const relevanceScore = (post: Post): number => {
     if (!user) return 0;
     const author = users.find((u) => u.id === post.authorId);
     let score = 0;
     if (user.topics.includes(post.topic)) score += 50;
     if (author?.languages?.some((l) => user.languages?.includes(l))) score += 15;
-    // Tiny recency bonus so ties break newest-first
     score += new Date(post.createdAt).getTime() / 1e13;
     return score;
   };
 
   const handleRequestCall = async (post: Post, author?: User) => {
     if (!user || !author) return;
-    // Skip if an active request to this person already exists (UI guard)
     const hasActive = sentRequests.some(
       (r) => r.toId === author.id && (r.status === "pending" || r.status === "accepted"),
     );
@@ -139,7 +168,6 @@ export default function WisdomWall() {
       setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
       logInteraction({ userId: user.id, eventType: "call_requested", targetId: author.id }).catch(() => {});
     } catch {
-      // API rejected (duplicate race or other error) — still mark sent so UI stays consistent
       setSentPostIds((prev) => ({ ...prev, [post.id]: true }));
     }
   };
@@ -147,9 +175,6 @@ export default function WisdomWall() {
   const handlePostDirect = async () => {
     if (!user || !composerQuote.trim()) return;
     setPosting(true);
-    // Direct posts publish immediately (no approval needed) since they're
-    // the author's own words, unlike call_summary posts which need the
-    // other participant's consent before going live.
     await createPost({
       authorId: user.id,
       type: role === "mentor" ? "wisdom" : "reflection",
@@ -180,8 +205,6 @@ export default function WisdomWall() {
   const visiblePosts = posts.filter((p) => {
     if (tab === "My posts") return user ? p.authorId === user.id : false;
     if (p.status !== "published") return false;
-    // "Wisdom" tab: only show posts from the opposite role so learners see
-    // mentors' wisdom and mentors see learners' reflections.
     if (tab === "Wisdom" && user) {
       const author = users.find((u) => u.id === p.authorId);
       if (author && author.role === user.role) return false;
@@ -195,8 +218,6 @@ export default function WisdomWall() {
     return true;
   });
 
-  // Both "Wisdom" and "Community" are ranked by personal relevance.
-  // "Community" differs only in that same-role posts are also included.
   if (tab === "Wisdom" || tab === "Community") {
     filteredPosts = [...filteredPosts].sort((a, b) => relevanceScore(b) - relevanceScore(a));
   }
@@ -213,7 +234,7 @@ export default function WisdomWall() {
 
         {/* Pending-approval Card */}
         {pendingApproval && tab === "Wisdom" && (
-          <div className="bg-[#F4F1FC] border border-[#C5BCDF] rounded-[16px] p-6 mb-8 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+          <div className="bg-[#F4F1FC] border border-[#C5BCDF] rounded-[18px] p-6 mb-8 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
             <div>
               <h3 className="font-semibold text-[18px] text-primary mb-2">
                 {authorOf(pendingApproval)?.name ?? "Someone"} wants to share a story from your conversation
@@ -221,25 +242,34 @@ export default function WisdomWall() {
               <p className="font-serif italic text-[18px] mb-2">"{pendingApproval.quote}"</p>
             </div>
             <div className="flex gap-3 shrink-0">
-              <button onClick={handleDeclineStory} className="px-6 py-3 border border-border rounded-[12px] bg-white text-[16px] font-medium hover:bg-secondary">Decline</button>
-              <button onClick={handleApproveStory} className="px-6 py-3 bg-primary text-white rounded-[12px] text-[16px] font-medium hover:bg-primary-hover">Approve</button>
+              <button onClick={handleDeclineStory} className="btn-action px-6 py-3 border border-border rounded-[12px] bg-white text-[16px] font-medium hover:bg-secondary">Decline</button>
+              <button onClick={handleApproveStory} className="btn-action px-6 py-3 bg-primary text-white rounded-[12px] text-[16px] font-medium hover:bg-primary-hover">Approve</button>
             </div>
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-border mb-8 overflow-x-auto pb-1">
-          {["Wisdom", "Community", "My posts", "Requests"].map(t => (
+        {/* Tabs with sliding indicator */}
+        <div className="relative flex gap-0 border-b border-border mb-8 overflow-x-auto pb-px">
+          <div
+            className="absolute bottom-0 h-[3px] bg-primary rounded-t-full"
+            style={{
+              left: indicator.left,
+              width: indicator.width,
+              transition: "left 250ms ease, width 250ms ease",
+            }}
+            aria-hidden="true"
+          />
+          {TABS.map((t, i) => (
             <button
               key={t}
+              ref={(el) => { tabRefs.current[i] = el; }}
               onClick={() => setTab(t)}
-              className={`px-4 py-3 text-[18px] font-medium whitespace-nowrap relative ${tab === t ? "text-primary" : "text-foreground/60 hover:text-foreground"}`}
+              className={`px-4 py-3 text-[18px] font-medium whitespace-nowrap relative transition-colors duration-150 ${tab === t ? "text-primary" : "text-foreground/55 hover:text-foreground/80"}`}
             >
               {t}
               {t === "Requests" && pendingRequestCount > 0 && (
-                <span className="ml-2 bg-primary text-white text-base px-2 py-0.5 rounded-full">{pendingRequestCount}</span>
+                <span className="ml-2 bg-primary text-white text-[13px] px-2 py-0.5 rounded-full">{pendingRequestCount}</span>
               )}
-              {tab === t && <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-t-full" />}
             </button>
           ))}
         </div>
@@ -258,11 +288,11 @@ export default function WisdomWall() {
 
         {/* Direct posting composer */}
         {tab !== "Requests" && (
-          <div className="bg-white rounded-[16px] card-shadow mb-8 overflow-hidden">
+          <div className="bg-white rounded-[18px] card-shadow mb-8 overflow-hidden">
             {!composerOpen ? (
               <button
                 onClick={() => setComposerOpen(true)}
-                className="w-full text-left px-6 py-4 text-[16px] text-foreground/60 hover:bg-secondary/50 transition-colors flex items-center gap-2"
+                className="w-full text-left px-6 py-4 text-[16px] text-foreground/55 hover:bg-secondary/50 transition-colors flex items-center gap-2"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
                 {role === "mentor" ? "Share a piece of wisdom..." : "Share a reflection..."}
@@ -274,7 +304,7 @@ export default function WisdomWall() {
                   value={composerQuote}
                   onChange={(e) => setComposerQuote(e.target.value)}
                   placeholder={role === "mentor" ? "What wisdom would you like to share?" : "What's on your mind?"}
-                  className="w-full p-4 rounded-xl border border-input bg-white font-serif italic text-[18px] leading-relaxed outline-none focus:ring-2 focus:ring-primary/20 min-h-[120px]"
+                  className="w-full p-4 rounded-xl border border-input bg-white font-serif italic text-[18px] leading-relaxed outline-none min-h-[120px]"
                 />
                 <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:items-center sm:justify-between">
                   <select
@@ -290,14 +320,14 @@ export default function WisdomWall() {
                   <div className="flex gap-3 justify-end">
                     <button
                       onClick={() => { setComposerOpen(false); setComposerQuote(""); }}
-                      className="px-4 py-2 border border-border rounded-lg font-medium hover:bg-secondary"
+                      className="btn-action px-4 py-2 border border-border rounded-lg font-medium hover:bg-secondary"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handlePostDirect}
                       disabled={!composerQuote.trim() || posting}
-                      className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover disabled:opacity-50"
+                      className="btn-action px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover disabled:opacity-50"
                     >
                       {posting ? "Posting..." : "Post"}
                     </button>
@@ -309,46 +339,44 @@ export default function WisdomWall() {
         )}
 
         {loading ? (
-          <div className="text-center py-20 text-foreground/60">Loading...</div>
+          <WallSkeleton />
         ) : tab === "Requests" ? (
           <div className="space-y-10">
 
             {/* ── Received ── */}
             <section>
-              <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Received</h2>
+              <h2 className="text-[13px] font-semibold text-foreground/40 uppercase tracking-[0.12em] mb-4">Received</h2>
               <div className="space-y-4">
                 {myRequests.filter(r => r.status === "pending").map(req => {
                   const fromUser = users.find(u => u.id === req.fromId);
                   return (
-                    <div key={req.id} className="bg-white p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center">
+                    <div key={req.id} className="bg-white p-6 rounded-[18px] card-shadow card-hoverable flex flex-col sm:flex-row gap-4 justify-between items-center">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
                         <div>
-                          <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}, {fromUser?.age}</h3>
-                          <p className="text-foreground/70">
+                          <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}</h3>
+                          <p className="text-[13px] text-foreground/50 mt-0.5">{fromUser?.age} years old</p>
+                          <p className="text-[15px] text-foreground/70 mt-1">
                             {req.intent === "seek" ? "would like your advice" : "would like to help"}
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary border border-border text-base font-medium text-foreground/70">
-                              {req.intent === "seek" ? "I'd like your advice" : "I'd like to help"}
-                            </span>
                           </p>
                         </div>
                       </div>
                       <div className="flex gap-3 shrink-0">
-                        <button onClick={() => handleRespond(req, "decline")} className="px-6 py-3 border border-border rounded-[12px] font-medium hover:bg-secondary">Decline</button>
-                        <button onClick={() => handleRespond(req, "accept")} className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover">Accept</button>
+                        <button onClick={() => handleRespond(req, "decline")} className="btn-action px-6 py-3 border border-border rounded-[12px] font-medium text-[16px] hover:bg-secondary">Decline</button>
+                        <button onClick={() => handleRespond(req, "accept")} className="btn-action px-6 py-3 bg-primary text-white rounded-[12px] font-medium text-[16px] hover:bg-primary-hover">Accept</button>
                       </div>
                     </div>
                   );
                 })}
                 {myRequests.filter(r => r.status === "pending").length === 0 && (
-                  <p className="text-foreground/60 py-4">No pending requests.</p>
+                  <p className="text-foreground/55 py-4">No pending requests.</p>
                 )}
               </div>
             </section>
 
             {/* ── Sent ── */}
             <section>
-              <h2 className="text-[16px] font-semibold text-foreground/50 uppercase tracking-widest mb-4">Sent</h2>
+              <h2 className="text-[13px] font-semibold text-foreground/40 uppercase tracking-[0.12em] mb-4">Sent</h2>
               <div className="space-y-4">
                 {sentRequests.filter(r => r.status === "pending" || r.status === "accepted").map(req => {
                   const toUser = users.find(u => u.id === req.toId);
@@ -356,13 +384,14 @@ export default function WisdomWall() {
                   return (
                     <div
                       key={req.id}
-                      className={`p-6 rounded-[16px] card-shadow flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
+                      className={`p-6 rounded-[18px] card-shadow card-hoverable flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{toUser?.name?.[0] ?? "?"}</div>
                         <div>
-                          <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}, {toUser?.age}</h3>
-                          <p className="text-foreground/70">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
+                          <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}</h3>
+                          <p className="text-[13px] text-foreground/50 mt-0.5">{toUser?.age} years old</p>
+                          <p className="text-[15px] text-foreground/70 mt-1">{req.intent === "seek" ? "You requested their advice" : "You offered to help"}</p>
                         </div>
                       </div>
                       {isAccepted ? (
@@ -373,27 +402,27 @@ export default function WisdomWall() {
                           </span>
                           <button
                             onClick={() => { setCallPartnerId(req.toId); setLocation("/pre-call"); }}
-                            className="px-6 py-3 bg-primary text-white rounded-[12px] font-medium hover:bg-primary-hover"
+                            className="btn-action px-6 py-3 bg-primary text-white rounded-[12px] font-medium text-[16px] hover:bg-primary-hover"
                           >
                             Join call
                           </button>
                         </div>
                       ) : (
-                        <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/60 font-medium text-[15px] shrink-0">Awaiting response</span>
+                        <span className="px-4 py-2 rounded-full bg-secondary border border-border text-foreground/55 font-medium text-[14px] shrink-0">Awaiting response</span>
                       )}
                     </div>
                   );
                 })}
                 {sentRequests.filter(r => r.status === "pending" || r.status === "accepted").length === 0 && (
-                  <p className="text-foreground/60 py-4">No active requests sent.</p>
+                  <p className="text-foreground/55 py-4">No active requests sent.</p>
                 )}
               </div>
             </section>
 
           </div>
         ) : tab === "My posts" && filteredPosts.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-[16px] border border-border border-dashed">
-            <p className="text-[18px] text-foreground/60">Stories from your conversations will appear here.</p>
+          <div className="text-center py-20 bg-white rounded-[18px] border border-border border-dashed">
+            <p className="text-[18px] text-foreground/55">Stories from your conversations will appear here.</p>
           </div>
         ) : (
           <>
@@ -405,7 +434,7 @@ export default function WisdomWall() {
                     key={t}
                     onClick={() => setTopicFilter(topicFilter === t ? null : t)}
                     aria-pressed={topicFilter === t}
-                    className={`px-4 py-2 rounded-full border text-[16px] whitespace-nowrap transition-colors ${topicFilter === t ? "bg-primary/10 border-primary text-primary" : "border-border bg-white text-foreground/70 hover:border-primary/50"}`}
+                    className={`btn-action px-3 py-1.5 rounded-full border text-[13px] font-medium tracking-wide whitespace-nowrap transition-colors ${topicFilter === t ? "bg-primary/10 border-primary text-primary" : "border-border bg-white text-foreground/60 hover:border-primary/50 hover:text-foreground/80"}`}
                   >
                     {t}
                   </button>
@@ -417,7 +446,7 @@ export default function WisdomWall() {
                   placeholder="Search wisdom..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full px-4 h-[44px] rounded-[12px] border border-input focus:ring-3 focus:ring-primary/20 outline-none pl-10 bg-white"
+                  className="w-full px-4 h-[44px] rounded-[12px] border border-input pl-10 bg-white"
                   aria-label="Search wisdom"
                 />
                 <svg className="absolute left-3 top-3 text-foreground/40" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -428,51 +457,60 @@ export default function WisdomWall() {
 
             {/* Stories Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredPosts.map(post => {
+              {filteredPosts.map((post, index) => {
                 const author = authorOf(post);
-                // Already sent if clicked this session OR if a pending/accepted request
-                // to this author was loaded from the DB (survives page reload).
                 const alreadySent =
                   sentPostIds[post.id] ||
                   sentRequests.some(
                     (r) => r.toId === author?.id && (r.status === "pending" || r.status === "accepted"),
                   );
                 return (
-                  <div key={post.id} className="bg-white p-8 rounded-[16px] card-shadow flex flex-col h-full relative">
-                    {post.isNew && <span className="absolute top-6 right-6 bg-accent text-white px-3 py-1 rounded-full text-base font-semibold tracking-wide uppercase">NEW</span>}
+                  <div
+                    key={post.id}
+                    className="bg-white p-8 rounded-[18px] card-shadow card-hoverable flex flex-col h-full relative animate-card-in"
+                    style={{ "--card-delay": `${index * 60}ms` } as React.CSSProperties}
+                  >
+                    {post.isNew && (
+                      <span className="absolute top-6 right-6 bg-accent text-white px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase">NEW</span>
+                    )}
                     {post.status === "pending_approval" && (
-                      <span className="absolute top-6 right-6 bg-secondary text-primary px-3 py-1 rounded-full text-base font-semibold tracking-wide uppercase border border-border">Pending approval</span>
+                      <span className="absolute top-6 right-6 bg-secondary text-primary px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase border border-border">Pending</span>
                     )}
 
-                    <div className="mb-4 flex flex-wrap items-center gap-2">
-                      <span className="inline-block px-3 py-1 rounded-full bg-secondary text-primary text-base font-medium border border-border/50">
+                    <div className="mb-5 flex flex-wrap items-center gap-2">
+                      <span className="inline-block px-3 py-1 rounded-full bg-secondary text-primary text-[11px] font-semibold tracking-[0.08em] uppercase border border-border/50">
                         {post.topic}
                       </span>
-                      <span className="inline-block px-3 py-1 rounded-full bg-white text-foreground/60 text-base font-medium border border-border/50">
+                      <span className="inline-block px-3 py-1 rounded-full bg-white text-foreground/50 text-[11px] font-medium tracking-[0.06em] uppercase border border-border/50">
                         {post.type === "wisdom" ? "Wisdom" : post.type === "reflection" ? "Reflection" : "Call story"}
                       </span>
                     </div>
 
-                    <p className="font-serif italic text-[24px] leading-relaxed flex-1 mb-8">
+                    <p className="font-serif italic text-[26px] leading-relaxed flex-1 mb-8 text-foreground">
                       "{post.quote}"
                     </p>
 
                     <div className="flex items-center justify-between mt-auto pt-6 border-t border-border">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-lg shrink-0">
                           {author?.name?.[0] ?? "?"}
                         </div>
                         <div>
-                          <div className="font-semibold text-[16px]">{author?.name}, {author?.age}</div>
-                          {author?.credential && <div className="text-foreground/60 text-base">{author.credential}</div>}
+                          <div className="font-medium text-[15px] text-foreground">{author?.name}</div>
+                          <div className="text-[13px] text-foreground/45 mt-0.5">
+                            {author?.age}{author?.credential ? ` · ${author.credential}` : ""}
+                          </div>
                         </div>
                       </div>
-                      {/* Only show call button for cross-role pairs — never same-role or self */}
                       {author?.id !== user?.id && author?.role !== user?.role && (
                         <button
                           onClick={() => handleRequestCall(post, author)}
                           disabled={alreadySent}
-                          className={`px-4 py-2 rounded-[12px] text-[16px] font-medium transition-colors ${alreadySent ? "bg-success/10 text-success" : "bg-white border border-border hover:bg-secondary"}`}
+                          className={`btn-action px-4 py-2 rounded-[12px] text-[15px] font-medium ${
+                            alreadySent
+                              ? "bg-success/10 text-success"
+                              : "bg-white border border-border hover:bg-primary hover:text-white hover:border-primary"
+                          }`}
                           aria-live="polite"
                         >
                           {alreadySent ? "Request sent" : role === "mentor" ? "Offer a call" : "Request a call"}
@@ -480,7 +518,7 @@ export default function WisdomWall() {
                       )}
                     </div>
                     {alreadySent && author?.role !== user?.role && (
-                      <div className="mt-4 text-base text-success font-medium text-right">
+                      <div className="mt-4 text-[13px] text-success font-medium text-right">
                         {author?.name} will respond within 2 days.
                       </div>
                     )}
@@ -489,18 +527,15 @@ export default function WisdomWall() {
               })}
               {filteredPosts.length === 0 && (
                 <div className="col-span-1 md:col-span-2 text-center py-20">
-                  <p className="text-[18px] text-foreground/60">No wisdom found matching your filters.</p>
-                  <button onClick={() => { setSearch(""); setTopicFilter(null); }} className="mt-4 text-primary font-medium">Reset filters</button>
+                  <p className="text-[18px] text-foreground/55">
+                    {tab === "My posts" ? "Stories from your conversations will appear here." : "No posts match your filters."}
+                  </p>
                 </div>
               )}
             </div>
           </>
         )}
       </main>
-
-      <footer className="py-8 text-center text-foreground/60 text-[16px] border-t border-border bg-[#F7F5FB]">
-        Every storyteller is ID-verified. Stories are published only with both participants' consent.
-      </footer>
     </div>
   );
 }
