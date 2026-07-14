@@ -42,7 +42,7 @@ export default function Landing() {
       that has overflow:hidden, isolating the video/transform crop
       without affecting any UI element's click or visibility.
     */
-    <div className="h-screen relative flex flex-col">
+    <div style={{ height: "100vh", minHeight: "100svh", position: "relative", display: "flex", flexDirection: "column" }}>
 
       {/* ── Background container (isolated overflow crop) ─────────────────
           overflow:hidden here clips the scaled video without affecting
@@ -134,20 +134,6 @@ export default function Landing() {
           />
         )}
 
-        {/* Bottom scrim */}
-        {!highContrast && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: "80px",
-              background: "linear-gradient(to top, rgba(247,245,251,0.55) 0%, rgba(247,245,251,0) 100%)",
-              pointerEvents: "none",
-            }}
-          />
-        )}
 
         {/* SVG ripple — reduced-motion only */}
         {reducedMotion && !highContrast && (
@@ -262,7 +248,7 @@ export default function Landing() {
 
       {/* ── Footer / trust line ──────────────────────────────────────────── */}
       <footer
-        className="py-6 sm:py-8 text-center text-[0.95rem] flex items-center justify-center gap-2"
+        className="pt-4 pb-6 text-center text-[0.95rem] flex items-center justify-center gap-2"
         style={{ zIndex: 10, position: "relative", color: "var(--foreground)", opacity: 0.7 }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
