@@ -138,6 +138,23 @@ export default function Landing() {
         )}
 
 
+        {/* Bottom scrim — fades the poster's naturally-light bottom region
+            into the hero background colour so no pale strip is visible.
+            Graduated to solid #EDE8F7 (not transparent) for a clean edge. */}
+        {!highContrast && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "100px",
+              background: "linear-gradient(to top, #EDE8F7 0%, rgba(237,232,247,0) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
         {/* SVG ripple — reduced-motion only */}
         {reducedMotion && !highContrast && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
