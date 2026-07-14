@@ -105,14 +105,15 @@ export default function Landing() {
         aria-hidden="true"
       />
 
-      {/* Top-right corner mask — directly covers the PixVerse watermark area */}
+      {/* Top-right corner mask — fully opaque in the corner to guarantee
+          the PixVerse watermark is invisible across the entire video loop. */}
       <div
         className="absolute top-0 right-0"
         style={{
-          width: "220px",
-          height: "56px",
-          zIndex: 4,
-          background: "linear-gradient(to bottom-left, rgba(247,245,251,0.90) 0%, rgba(247,245,251,0) 100%)",
+          width: "380px",
+          height: "110px",
+          zIndex: 5,
+          background: "radial-gradient(ellipse at top right, rgba(247,245,251,1) 0%, rgba(247,245,251,0.95) 25%, rgba(247,245,251,0.70) 55%, rgba(247,245,251,0) 100%)",
           pointerEvents: "none",
         }}
         aria-hidden="true"
@@ -207,9 +208,9 @@ export default function Landing() {
                          hover:bg-primary hover:text-white hover:border-primary hover:-translate-y-0.5 hover:shadow-xl
                          active:scale-[0.98] transition-all duration-150 text-center"
               style={{
-                backgroundColor: "rgba(255,255,255,0.72)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
+                backgroundColor: "rgba(255,255,255,0.95)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
               }}
             >
               I want to learn from experience
