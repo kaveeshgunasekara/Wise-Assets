@@ -42,7 +42,7 @@ export default function Landing() {
       that has overflow:hidden, isolating the video/transform crop
       without affecting any UI element's click or visibility.
     */
-    <div style={{ height: "100vh", minHeight: "100svh", position: "relative", display: "flex", flexDirection: "column" }}>
+    <div className="hero-height" style={{ backgroundColor: "#EDE8F7", position: "relative", display: "flex", flexDirection: "column" }}>
 
       {/* ── Background container (isolated overflow crop) ─────────────────
           overflow:hidden here clips the scaled video without affecting
@@ -51,7 +51,10 @@ export default function Landing() {
         aria-hidden="true"
         style={{
           position: "fixed",
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: "-2px",
           overflow: "hidden",
           zIndex: 0,
         }}

@@ -99,9 +99,20 @@ body {
   margin: 0;
   padding: 0;
   font-family: var(--app-font-sans);
-  background: #F7F5FB;
+  background: #EDE8F7;
   color: var(--foreground);
   min-height: 100dvh;
+}
+
+#root {
+  margin: 0;
+  padding: 0;
+}
+
+/* Bulletproof full-viewport hero: 100vh with 100dvh override for modern browsers */
+.hero-height {
+  height: 100vh;
+  height: 100dvh;
 }
 
 .high-contrast {
