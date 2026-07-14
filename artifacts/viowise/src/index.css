@@ -92,7 +92,7 @@
 html {
   margin: 0;
   padding: 0;
-  font-size: calc(16px * var(--text-size-multiplier));
+  font-size: calc(18px * var(--text-size-multiplier));
 }
 
 body {
