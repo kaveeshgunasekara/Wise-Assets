@@ -50,7 +50,7 @@ export default function Landing() {
       <div
         aria-hidden="true"
         style={{
-          position: "absolute",
+          position: "fixed",
           inset: 0,
           overflow: "hidden",
           zIndex: 0,
