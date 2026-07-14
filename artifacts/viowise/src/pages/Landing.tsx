@@ -4,27 +4,26 @@ import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function Landing() {
   const heroImgRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
 
+  // Detect and track prefers-reduced-motion, update live if OS setting changes
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(mq.matches);
-
     const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  // Scroll parallax — hero image moves at ~30% of scroll speed.
-  // Direct DOM mutation (no setState) keeps it off the React render cycle.
+  // Parallax for the static image fallback (reduced-motion path only)
   useEffect(() => {
-    if (reducedMotion) return;
-
+    if (reducedMotion || !heroImgRef.current) return;
     const onScroll = () => {
       if (!heroImgRef.current) return;
       heroImgRef.current.style.backgroundPositionY = `calc(50% + ${window.scrollY * 0.3}px)`;
     };
-
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [reducedMotion]);
@@ -48,7 +47,9 @@ export default function Landing() {
       {/* ── Hero ────────────────────────────────────────────────────────── */}
       <main className="flex-1 relative flex flex-col items-center justify-center min-h-[540px]">
 
-        {/* Background image — parallax driven by scroll via ref */}
+        {/* Static poster / fallback image — always rendered underneath.
+            When the video is ready and motion is allowed it fades behind
+            the video; when reduced-motion is on it's all that shows. */}
         <div
           ref={heroImgRef}
           className="absolute inset-0 opacity-[0.72]"
@@ -61,106 +62,68 @@ export default function Landing() {
           aria-hidden="true"
         />
 
-        {/* Overlay — wide radial white fade so faces stay visible at edges */}
+        {/* Video background — only when motion is allowed.
+            Fades in smoothly once the browser has enough data to play.
+            Falls back to the poster (hero-connection.jpeg) while loading. */}
+        {!reducedMotion && (
+          <video
+            ref={videoRef}
+            src="/hero-video.mp4"
+            poster="/hero-connection.jpeg"
+            autoPlay
+            muted
+            loop
+            playsInline
+            onCanPlayThrough={() => setVideoReady(true)}
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center center",
+              opacity: videoReady ? 0.82 : 0,
+              transition: "opacity 800ms ease",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* Overlay — keeps headline and buttons readable over the moving video.
+            Stronger centre fade than the static version to account for the
+            video's richer colours and motion. */}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 z-[1]"
           style={{
             background: [
-              "radial-gradient(ellipse 65% 75% at 50% 48%, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.75) 35%, rgba(255,255,255,0.40) 65%, rgba(255,255,255,0.10) 100%)",
-              "linear-gradient(to bottom, rgba(248,247,255,0.30) 0%, transparent 30%, transparent 70%, rgba(248,247,255,0.30) 100%)",
+              "radial-gradient(ellipse 70% 80% at 50% 48%, rgba(247,245,251,0.88) 0%, rgba(247,245,251,0.70) 30%, rgba(247,245,251,0.35) 60%, rgba(247,245,251,0.08) 100%)",
+              "linear-gradient(to bottom, rgba(247,245,251,0.35) 0%, transparent 25%, transparent 75%, rgba(247,245,251,0.35) 100%)",
             ].join(", "),
           }}
           aria-hidden="true"
         />
 
-        {/* Connection ripple SVG — only when motion is allowed.
-            Three concentric rings that slowly pulse outward from the hero
-            centre, evoking the idea of connection radiating between people.
-            All strokes are very low opacity so they read as texture, not UI. */}
-        {!reducedMotion && (
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            aria-hidden="true"
-          >
-            <svg
-              viewBox="0 0 800 520"
-              preserveAspectRatio="xMidYMid slice"
-              className="absolute inset-0 w-full h-full"
-              style={{ overflow: "visible" }}
-            >
+        {/* SVG connection ripple — only shown in static/reduced-motion mode
+            since the video already provides animated connection lines */}
+        {reducedMotion && (
+          <div className="absolute inset-0 z-[1] flex items-center justify-center pointer-events-none" aria-hidden="true">
+            <svg viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 w-full h-full" style={{ overflow: "visible" }}>
               <defs>
-                {/* Soft violet radial glow at the centre */}
-                <radialGradient id="heroGlow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%"   stopColor="#53409B" stopOpacity="0.13" />
+                <radialGradient id="heroGlowStatic" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stopColor="#53409B" stopOpacity="0.10" />
                   <stop offset="100%" stopColor="#53409B" stopOpacity="0"    />
                 </radialGradient>
               </defs>
-
-              {/* Central soft glow — slow breathe */}
-              <ellipse cx="400" cy="260" rx="72" ry="72" fill="url(#heroGlow)">
-                <animate
-                  attributeName="rx" values="68;78;68"
-                  dur="5s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-                <animate
-                  attributeName="ry" values="68;78;68"
-                  dur="5s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-                <animate
-                  attributeName="opacity" values="0.7;1;0.7"
-                  dur="5s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-              </ellipse>
-
-              {/* Ring 1 — nearest, most visible */}
-              <circle cx="400" cy="260" r="110" fill="none" stroke="#53409B" strokeWidth="1">
-                <animate
-                  attributeName="r" values="106;118;106"
-                  dur="5s" begin="0s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-                <animate
-                  attributeName="opacity" values="0.05;0.14;0.05"
-                  dur="5s" begin="0s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-              </circle>
-
-              {/* Ring 2 — mid distance, offset timing */}
-              <circle cx="400" cy="260" r="180" fill="none" stroke="#53409B" strokeWidth="0.8">
-                <animate
-                  attributeName="r" values="175;190;175"
-                  dur="6.5s" begin="1.2s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-                <animate
-                  attributeName="opacity" values="0.03;0.09;0.03"
-                  dur="6.5s" begin="1.2s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-              </circle>
-
-              {/* Ring 3 — outermost, barely perceptible */}
-              <circle cx="400" cy="260" r="255" fill="none" stroke="#53409B" strokeWidth="0.6">
-                <animate
-                  attributeName="r" values="248;266;248"
-                  dur="8s" begin="2.6s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-                <animate
-                  attributeName="opacity" values="0.02;0.06;0.02"
-                  dur="8s" begin="2.6s" repeatCount="indefinite" calcMode="spline"
-                  keySplines="0.45 0 0.55 1; 0.45 0 0.55 1"
-                />
-              </circle>
+              <ellipse cx="400" cy="260" rx="72" ry="72" fill="url(#heroGlowStatic)" />
+              <circle cx="400" cy="260" r="110" fill="none" stroke="#53409B" strokeWidth="1"   opacity="0.08" />
+              <circle cx="400" cy="260" r="180" fill="none" stroke="#53409B" strokeWidth="0.8" opacity="0.05" />
+              <circle cx="400" cy="260" r="255" fill="none" stroke="#53409B" strokeWidth="0.6" opacity="0.03" />
             </svg>
           </div>
         )}
 
-        {/* Content — staggered entrance, each element rises 12-16px and fades in */}
+        {/* Hero text + CTAs — always above every background layer */}
         <div className="relative z-10 flex flex-col items-center text-center px-8 py-20 max-w-4xl mx-auto w-full">
           <span
             className="text-primary text-[16px] uppercase tracking-widest font-semibold mb-6 animate-hero-in"
