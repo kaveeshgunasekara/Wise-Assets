@@ -42,7 +42,7 @@ export default function Landing() {
       that has overflow:hidden, isolating the video/transform crop
       without affecting any UI element's click or visibility.
     */
-    <div className="min-h-screen relative flex flex-col">
+    <div className="h-screen relative flex flex-col">
 
       {/* ── Background container (isolated overflow crop) ─────────────────
           overflow:hidden here clips the scaled video without affecting
