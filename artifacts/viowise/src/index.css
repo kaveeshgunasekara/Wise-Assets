@@ -101,11 +101,25 @@ body {
 }
 
 .high-contrast {
-  --foreground: #000000;
-  --border: #A098B5;
-  --input: #A098B5;
-  --card-border: #A098B5;
-  background: #EFEAF9;
+  --foreground: #0a0a14;
+  --muted-foreground: #1a1a2e;
+  --primary: #3D2F7A;
+  --border: #7868BE;
+  --input: #7868BE;
+  --card-border: #7868BE;
+}
+
+/* Solid readable background in high-contrast — replaces the gradient */
+.high-contrast body {
+  background: #F0EDF8;
+}
+
+/* Make muted text (text-foreground/60, /70, /80) readable in high-contrast */
+.high-contrast .text-foreground\/60,
+.high-contrast .text-foreground\/70,
+.high-contrast .text-foreground\/80 {
+  opacity: 1;
+  color: #1a1a2e;
 }
 
 .bg-pattern {
