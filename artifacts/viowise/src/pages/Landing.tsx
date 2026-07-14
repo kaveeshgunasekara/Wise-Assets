@@ -4,9 +4,7 @@ import AccessibilityControl from "@/components/AccessibilityControl";
 
 export default function Landing() {
   const heroImgRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [videoReady, setVideoReady] = useState(false);
 
   // Detect and track prefers-reduced-motion, update live if OS setting changes
   useEffect(() => {
@@ -63,18 +61,17 @@ export default function Landing() {
         />
 
         {/* Video background — only when motion is allowed.
-            Fades in smoothly once the browser has enough data to play.
-            Falls back to the poster (hero-connection.jpeg) while loading. */}
+            The browser shows the poster until it can start playing,
+            so no JS opacity gate is needed — simpler and more reliable.
+            poster="/hero-connection.jpeg" handles the pre-load state. */}
         {!reducedMotion && (
           <video
-            ref={videoRef}
             src="/hero-video.mp4"
             poster="/hero-connection.jpeg"
             autoPlay
             muted
             loop
             playsInline
-            onCanPlayThrough={() => setVideoReady(true)}
             aria-hidden="true"
             style={{
               position: "absolute",
@@ -83,8 +80,7 @@ export default function Landing() {
               height: "100%",
               objectFit: "cover",
               objectPosition: "center center",
-              opacity: videoReady ? 0.82 : 0,
-              transition: "opacity 800ms ease",
+              opacity: 0.82,
               pointerEvents: "none",
             }}
           />
