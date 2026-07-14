@@ -93,8 +93,16 @@ export default function Landing() {
               objectPosition: "center 50%",
               opacity: 0.82,
               pointerEvents: "none",
-              transform: "scale(1.28) translateY(8%)",
-              transformOrigin: "center top",
+              /* scale(1.28) from center expands the element to 128% each side
+                 (+/- 14% beyond the container edges top and bottom).
+                 translateY(-14%) shifts the whole scaled element UP by 14%
+                 of the element's own height, so:
+                   top  → -14% - 14% = -28% (hidden above overflow boundary)
+                   bottom → +14% - 14% = 0% (exactly at container bottom)
+                 Result: the top 28% of the video frame — where PixVerse
+                 watermark lives — is physically outside the visible area. */
+              transform: "scale(1.28) translateY(-14%)",
+              transformOrigin: "center center",
             }}
           />
         )}
