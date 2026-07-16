@@ -175,6 +175,18 @@ export default function VideoCall() {
     }
     if (user && callPartnerId) {
       completeRequest(user.id, callPartnerId).catch(() => {});
+
+      // Fire-and-forget: generate two pending-approval story summaries via
+      // Claude. Only the user who explicitly ends the call triggers this so
+      // we don't double-create posts when both sides disconnect at once.
+      // The existing pending_approval flow on the Wisdom Wall handles approval.
+      if (storyCaptureConsent) {
+        supabase.functions
+          .invoke("generate-story-summary", {
+            body: { userA: user.id, userB: callPartnerId },
+          })
+          .catch(() => {}); // non-blocking — never delay navigation
+      }
     }
     setLocation(storyCaptureConsent ? "/story-capture" : "/wall");
   };

@@ -1,0 +1,20 @@
+Build the Claude story-summary feature. After a call ends, generate two personalized wisdom summaries using the Claude API, which each user approves before it becomes a post.
+
+SETUP:
+1. Add call_session_id column to posts (ALTER TABLE posts ADD COLUMN call_session_id uuid;) and create the call_sessions table (id, request_id, daily_room, transcript text, language default 'en', started_at, ended_at, created_at).
+2. I will add ANTHROPIC_API_KEY as a Supabase Edge Function secret.
+
+EDGE FUNCTION (generate-story-summary):
+3. Create a Supabase Edge Function that receives: the two user IDs (mentor/elder and learner/younger) and the request_id.
+4. It fetches both user profiles (name, role, topics) and the transcript. IMPORTANT: real transcription isn't built yet, so for now accept an optional transcript param — if none is provided, use a smart fallback based on the shared topic and names (so this works end-to-end today, and real transcripts plug in later).
+5. Call the Claude API (Anthropic messages endpoint, ANTHROPIC_API_KEY from env, current model) TWICE (or once with two outputs):
+   - Summary A — for the ELDER: frame it as the wisdom THEY shared, honoring their experience. Warm, dignified, first-person or reflective. ~2-3 sentences.
+   - Summary B — for the YOUNGER person: frame it as the guidance THEY received, as a lesson for their journey. ~2-3 sentences.
+6. Insert TWO posts: one authored by the elder (Summary A), one by the younger (Summary B), both type='call_summary', status='pending_approval', source='call', with the call_session_id.
+7. If the Claude call fails, fall back to the existing hardcoded quote so nothing breaks.
+
+FRONTEND:
+8. In VideoCall handleEndCall (after completeRequest), call supabase.functions.invoke('generate-story-summary', {...}) with the two user IDs and request_id. Fire-and-forget with a catch.
+9. The existing pending_approval flow on the Wisdom Wall already shows each user their draft to approve/decline — reuse it, no new UI needed.
+
+Tell me: (a) the exact Supabase secret name for the Anthropic key, (b) how to deploy the Edge Function, (c) how to test it. Keep the hardcoded fallback intact.
