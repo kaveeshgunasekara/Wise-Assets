@@ -12,11 +12,16 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resendSent, setResendSent] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setSigningIn(true);
     setError(null);
+    setUnconfirmedEmail(null);
+    setResendSent(false);
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
@@ -24,23 +29,25 @@ export default function SignIn() {
     });
 
     if (authError || !data.user) {
-      setError(
-        authError?.message === "Invalid login credentials"
-          ? "We couldn't find an account with that email and password."
-          : (authError?.message ?? "Sign-in failed. Please try again."),
-      );
+      const msg = authError?.message ?? "";
+
+      if (msg.toLowerCase().includes("email not confirmed")) {
+        setUnconfirmedEmail(email.trim().toLowerCase());
+        setError(
+          "Please confirm your email before signing in. Check your inbox for the verification link.",
+        );
+      } else if (msg === "Invalid login credentials") {
+        setError("We couldn't find an account with that email and password.");
+      } else {
+        setError(msg || "Sign-in failed. Please try again.");
+      }
+
       setSigningIn(false);
       return;
     }
 
-    // Manually load the profile before navigating so RequireAuth sees a
-    // non-null user immediately (onAuthStateChange will fire too, but this
-    // avoids any race between the navigation and the async profile load).
     const profile = await getUserById(data.user.id);
     if (!profile) {
-      // Auth succeeded but no matching row in public.users. Don't navigate —
-      // going to /wall with a null user would just bounce back to sign-in with
-      // no explanation. Show a clear message instead.
       setError("We couldn't load your profile. Please try again in a moment.");
       await supabase.auth.signOut();
       setSigningIn(false);
@@ -51,6 +58,21 @@ export default function SignIn() {
     setRole(profile.role);
     setSigningIn(false);
     setLocation("/wall");
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail || resending) return;
+    setResending(true);
+    setResendSent(false);
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: unconfirmedEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    setResending(false);
+    if (!resendError) setResendSent(true);
   };
 
   return (
@@ -67,7 +89,9 @@ export default function SignIn() {
 
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="bg-white p-8 rounded-[16px] card-shadow w-full max-w-md">
-          <h1 className="text-[40px] font-serif text-foreground mb-8 text-center leading-tight">Welcome back</h1>
+          <h1 className="text-[40px] font-serif text-foreground mb-8 text-center leading-tight">
+            Welcome back
+          </h1>
 
           <form className="space-y-5" onSubmit={handleSignIn}>
             <div>
@@ -94,16 +118,43 @@ export default function SignIn() {
             </div>
 
             {error && (
-              <p className="text-[16px] text-destructive" role="alert">{error}</p>
+              <div className="rounded-[12px] bg-red-50 border border-red-200 px-4 py-3">
+                <p className="text-[15px] text-destructive" role="alert">{error}</p>
+                {unconfirmedEmail && (
+                  <div className="mt-3">
+                    {resendSent ? (
+                      <p className="text-[14px] text-green-700 font-medium" role="status">
+                        Confirmation email sent — check your inbox.
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResendConfirmation}
+                        disabled={resending}
+                        className="text-[14px] font-medium text-primary hover:underline disabled:opacity-60"
+                      >
+                        {resending ? "Sending…" : "Resend confirmation email →"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
-            <button type="submit" disabled={signingIn} className="w-full bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors mt-2 disabled:opacity-60">
-              {signingIn ? "Signing in..." : "Sign in"}
+            <button
+              type="submit"
+              disabled={signingIn}
+              className="w-full bg-primary text-white h-[56px] rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors mt-2 disabled:opacity-60"
+            >
+              {signingIn ? "Signing in…" : "Sign in"}
             </button>
           </form>
 
           <p className="mt-8 text-center text-[16px]">
-            New here? <Link href="/sign-up" className="text-primary font-medium hover:underline">Create an account</Link>
+            New here?{" "}
+            <Link href="/sign-up" className="text-primary font-medium hover:underline">
+              Create an account
+            </Link>
           </p>
         </div>
       </main>

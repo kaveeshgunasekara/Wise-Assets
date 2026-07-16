@@ -6,6 +6,7 @@ import TopicSelect from "@/components/TopicSelect";
 import { supabase } from "@/services/supabase";
 import { getUserById, updateUser } from "@/services/api";
 import { isAgeRoleConsistent } from "@/lib/age-role";
+import { PENDING_PROFILE_KEY } from "@/pages/CheckEmail";
 
 const LANGUAGE_OPTIONS = [
   "English",
@@ -82,6 +83,10 @@ export default function TopicSelection() {
       email: pendingEmail,
       password: pendingPassword,
       options: {
+        // Tell Supabase where to redirect after the user clicks the
+        // confirmation link in their email. Must match an allowed redirect
+        // URL in Supabase Auth → URL Configuration.
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           name: pendingName || "New member",
           age: Number(pendingAge) || 0,
@@ -96,19 +101,37 @@ export default function TopicSelection() {
       return;
     }
 
-    // If email confirmation is required, session will be null.
+    // Email confirmation is ON → session is null until the user clicks the link.
+    // Persist the topics/languages in localStorage so AuthCallback can apply
+    // them after confirmation (when there's an active session for RLS to allow it).
     if (!authData.session) {
-      setError(
-        "Check your email to confirm your account, then sign in below.",
-      );
+      try {
+        localStorage.setItem(
+          PENDING_PROFILE_KEY,
+          JSON.stringify({
+            userId: authData.user!.id,
+            email: pendingEmail,
+            topics: selectedTopics,
+            languages: selectedLanguages,
+            age: Number(pendingAge) || 0,
+          }),
+        );
+      } catch {
+        // localStorage unavailable — topics will need to be set in profile settings
+      }
+      // Clear sensitive in-memory state before navigating away.
+      setPendingPassword("");
+      setPendingName("");
+      setPendingEmail("");
+      setPendingAge("");
+      setPendingTopics([]);
+      setPendingLanguages([]);
       setCreating(false);
+      setLocation("/check-email");
       return;
     }
 
-    // The trigger has already inserted the profile row with name + role.
-    // Fetch it to confirm existence, then immediately update it with the
-    // rest of the onboarding selections so the full profile is persisted
-    // before we navigate anywhere.
+    // Email confirmation is OFF (dev/testing) — session exists, apply topics now.
     const profile = await getUserById(authData.user!.id);
     if (profile) {
       const updated = await updateUser(authData.user!.id, {

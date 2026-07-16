@@ -10,6 +10,8 @@ import SignUp from "@/pages/SignUp";
 import IdVerification from "@/pages/IdVerification";
 import TopicSelection from "@/pages/TopicSelection";
 import Verified from "@/pages/Verified";
+import CheckEmail from "@/pages/CheckEmail";
+import AuthCallback from "@/pages/AuthCallback";
 import SignIn from "@/pages/SignIn";
 import WisdomWall from "@/pages/WisdomWall";
 import Profile from "@/pages/Profile";
@@ -41,6 +43,8 @@ function Router() {
       <Route path="/verify-id" component={IdVerification} />
       <Route path="/select-topics" component={TopicSelection} />
       <Route path="/verified" component={Verified} />
+      <Route path="/check-email" component={CheckEmail} />
+      <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/sign-in" component={SignIn} />
       <Route path="/wall">
         <RequireAuth component={WisdomWall} />
