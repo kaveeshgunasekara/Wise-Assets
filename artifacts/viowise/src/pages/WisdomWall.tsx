@@ -4,8 +4,13 @@ import { useApp } from "@/hooks/use-app";
 import {
   getPosts,
   getUsers,
-  approvePost,
   declinePost,
+  consentToShare,
+  revokeConsent,
+  editPost,
+  getCallSummaryPartnerUserId,
+  getUserById,
+  getPostById,
   createPost,
   getMatches,
   requestCall,
@@ -67,8 +72,18 @@ export default function WisdomWall() {
   const [composerTopic, setComposerTopic] = useState("Career");
   const [posting, setPosting] = useState(false);
 
+  // ── My Posts call-summary management ─────────────────────────────────────
+  // partnerInfo[callSessionId] = { name, postExists }
+  // name null = couldn't load; postExists false = partner deleted their post
+  const [partnerInfo, setPartnerInfo] = useState<Record<string, { name: string | null; postExists: boolean }>>({});
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [myPostsWorking, setMyPostsWorking] = useState<Record<string, boolean>>({});
+
   // Tab sliding indicator
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Tracks which callSessionIds have already had their partner name fetched (avoids re-fetching)
+  const partnerNamesFetchedRef = useRef<Set<string>>(new Set());
   const [indicator, setIndicator] = useState({ left: 0, width: 0 });
 
   useLayoutEffect(() => {
@@ -125,22 +140,111 @@ export default function WisdomWall() {
     return () => clearInterval(id);
   }, [user, refreshRequests]);
 
+  // Fetch partner name once per pending call-summary session (uses ref to avoid re-fetching)
+  useEffect(() => {
+    if (!user?.id) return;
+    const pending = posts.filter(
+      (p) =>
+        p.authorId === user.id &&
+        p.type === "call_summary" &&
+        p.status === "pending_approval" &&
+        p.callSessionId &&
+        !partnerNamesFetchedRef.current.has(p.callSessionId),
+    );
+    pending.forEach(async (p) => {
+      if (!p.callSessionId) return;
+      partnerNamesFetchedRef.current.add(p.callSessionId);
+      const partnerId = await getCallSummaryPartnerUserId(p.callSessionId, user.id);
+      let name: string | null = null;
+      if (partnerId) {
+        const partnerUser = await getUserById(partnerId);
+        name = partnerUser?.name ?? null;
+      }
+      setPartnerInfo((prev) => ({
+        ...prev,
+        [p.callSessionId!]: { name, postExists: partnerId !== null },
+      }));
+    });
+  }, [posts, user?.id]); // partnerInfo intentionally excluded — would cause infinite loop
+
+  // Poll every 3 s when on My posts tab:
+  //   (a) detect if a waiting post became published (dual-consent trigger fired)
+  //   (b) detect if the partner deleted their post (chose Keep private)
+  useEffect(() => {
+    if (!user?.id || tab !== "My posts") return;
+
+    const waitingPosts = posts.filter(
+      (p) =>
+        p.authorId === user.id &&
+        p.type === "call_summary" &&
+        p.status === "pending_approval" &&
+        p.authorConsented === true,
+    );
+    const pendingPosts = posts.filter(
+      (p) =>
+        p.authorId === user.id &&
+        p.type === "call_summary" &&
+        p.status === "pending_approval" &&
+        !!p.callSessionId,
+    );
+
+    if (waitingPosts.length === 0 && pendingPosts.length === 0) return;
+
+    const id = setInterval(async () => {
+      if (waitingPosts.length > 0) {
+        const updates = await Promise.all(waitingPosts.map((p) => getPostById(p.id)));
+        if (updates.some((u) => u?.status === "published")) {
+          await refreshPosts();
+          return; // refreshPosts will update state; let next tick re-evaluate
+        }
+      }
+      // Re-check whether each partner's post still exists
+      pendingPosts.forEach(async (p) => {
+        if (!p.callSessionId) return;
+        const partnerId = await getCallSummaryPartnerUserId(p.callSessionId, user.id);
+        setPartnerInfo((prev) => {
+          const cur = prev[p.callSessionId!];
+          const nowExists = partnerId !== null;
+          if (cur && cur.postExists === nowExists) return prev;
+          return { ...prev, [p.callSessionId!]: { name: cur?.name ?? null, postExists: nowExists } };
+        });
+      });
+    }, 3000);
+
+    return () => clearInterval(id);
+  }, [posts, user?.id, tab, refreshPosts]);
+
   const authorOf = (post: Post) => users.find((u) => u.id === post.authorId);
 
-  const pendingApproval = user
-    ? posts.find((p) => p.status === "pending_approval" && p.authorId !== user.id)
-    : undefined;
-
-  const handleApproveStory = async () => {
-    if (!pendingApproval) return;
-    await approvePost(pendingApproval.id);
-    await refreshPosts();
+  // ── My Posts call-summary handlers ─────────────────────────────────────────
+  const handleMyPostsShare = async (postId: string) => {
+    setMyPostsWorking((prev) => ({ ...prev, [postId]: true }));
+    try { await consentToShare(postId); await refreshPosts(); }
+    finally { setMyPostsWorking((prev) => ({ ...prev, [postId]: false })); }
   };
 
-  const handleDeclineStory = async () => {
-    if (!pendingApproval) return;
-    await declinePost(pendingApproval.id);
-    await refreshPosts();
+  const handleMyPostsKeepPrivate = async (postId: string) => {
+    setMyPostsWorking((prev) => ({ ...prev, [postId]: true }));
+    try { await declinePost(postId); await refreshPosts(); }
+    finally { setMyPostsWorking((prev) => ({ ...prev, [postId]: false })); }
+  };
+
+  const handleMyPostsUnshare = async (post: Post) => {
+    if (post.status === "published") return; // guard: never un-publish
+    setMyPostsWorking((prev) => ({ ...prev, [post.id]: true }));
+    try { await revokeConsent(post.id); await refreshPosts(); }
+    finally { setMyPostsWorking((prev) => ({ ...prev, [post.id]: false })); }
+  };
+
+  const handleMyPostsSaveEdit = async (postId: string) => {
+    setMyPostsWorking((prev) => ({ ...prev, [postId]: true }));
+    try {
+      await editPost(postId, { quote: editingText.trim() });
+      setEditingPostId(null);
+      await refreshPosts();
+    } finally {
+      setMyPostsWorking((prev) => ({ ...prev, [postId]: false }));
+    }
   };
 
   const relevanceScore = (post: Post): number => {
@@ -231,22 +335,6 @@ export default function WisdomWall() {
       <AppNav />
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
-
-        {/* Pending-approval Card */}
-        {pendingApproval && tab === "Wisdom" && (
-          <div className="bg-[#F4F1FC] border border-[#C5BCDF] rounded-[18px] p-6 mb-8 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-[18px] text-primary mb-2">
-                {authorOf(pendingApproval)?.name ?? "Someone"} wants to share a story from your conversation
-              </h3>
-              <p className="font-serif italic text-[18px] mb-2">"{pendingApproval.quote}"</p>
-            </div>
-            <div className="flex gap-3 shrink-0">
-              <button onClick={handleDeclineStory} className="btn-action px-6 py-3 border border-border rounded-[12px] bg-white text-[16px] font-medium hover:bg-secondary">Decline</button>
-              <button onClick={handleApproveStory} className="btn-action px-6 py-3 bg-primary text-white rounded-[12px] text-[16px] font-medium hover:bg-primary-hover">Approve</button>
-            </div>
-          </div>
-        )}
 
         {/* Tabs with sliding indicator */}
         <div className="relative flex gap-0 border-b border-border mb-8 overflow-x-auto pb-px">
@@ -464,19 +552,26 @@ export default function WisdomWall() {
                   sentRequests.some(
                     (r) => r.toId === author?.id && (r.status === "pending" || r.status === "accepted"),
                   );
+                const isMyPendingCallSummary =
+                  tab === "My posts" &&
+                  post.type === "call_summary" &&
+                  post.status === "pending_approval";
+                const pInfo = post.callSessionId ? partnerInfo[post.callSessionId] : undefined;
                 return (
                   <div
                     key={post.id}
                     className="bg-white p-8 rounded-[18px] card-shadow card-hoverable flex flex-col h-full relative animate-card-in"
                     style={{ "--card-delay": `${index * 60}ms` } as React.CSSProperties}
                   >
+                    {/* Badges */}
                     {post.isNew && (
                       <span className="absolute top-6 right-6 bg-accent text-white px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase">NEW</span>
                     )}
-                    {post.status === "pending_approval" && (
-                      <span className="absolute top-6 right-6 bg-secondary text-primary px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase border border-border">Pending</span>
+                    {tab === "My posts" && post.type === "call_summary" && post.status === "published" && !post.isNew && (
+                      <span className="absolute top-6 right-6 bg-success/10 text-success px-3 py-1 rounded-full text-[11px] font-semibold tracking-[0.1em] uppercase border border-success/20">Published ✓</span>
                     )}
 
+                    {/* Topic + type pills */}
                     <div className="mb-5 flex flex-wrap items-center gap-2">
                       <span className="inline-block px-3 py-1 rounded-full bg-secondary text-primary text-[11px] font-semibold tracking-[0.08em] uppercase border border-border/50">
                         {post.topic}
@@ -486,41 +581,152 @@ export default function WisdomWall() {
                       </span>
                     </div>
 
-                    <p className="font-serif italic text-[26px] leading-relaxed flex-1 mb-8 text-foreground">
-                      "{post.quote}"
-                    </p>
+                    {/* Quote — becomes a textarea when editing */}
+                    {editingPostId === post.id ? (
+                      <textarea
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        className="flex-1 w-full p-4 rounded-xl border border-primary/30 bg-white font-serif italic text-[22px] leading-relaxed mb-6 outline-none focus:ring-2 focus:ring-primary/20 min-h-[160px] resize-none"
+                      />
+                    ) : (
+                      <p className="font-serif italic text-[26px] leading-relaxed flex-1 mb-8 text-foreground">
+                        "{post.quote}"
+                      </p>
+                    )}
 
-                    <div className="flex items-center justify-between mt-auto pt-6 border-t border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-lg shrink-0">
-                          {author?.name?.[0] ?? "?"}
-                        </div>
-                        <div>
-                          <div className="font-medium text-[15px] text-foreground">{author?.name}</div>
-                          <div className="text-[13px] text-foreground/45 mt-0.5">
-                            {author?.age}{author?.credential ? ` · ${author.credential}` : ""}
+                    {/* Footer: pending call_summary in My posts gets a special 3-state footer */}
+                    {isMyPendingCallSummary ? (
+                      <div className="mt-auto border-t border-border pt-5">
+                        {/* Author + partner context line */}
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-base shrink-0">
+                            {user?.name?.[0] ?? "?"}
+                          </div>
+                          <div className="text-[13px] text-foreground/60">
+                            {user?.name}{user?.age ? `, ${user.age}` : ""}
+                            {pInfo?.name ? ` · with ${pInfo.name}` : ""}
                           </div>
                         </div>
+
+                        {/* State 1: not yet shared */}
+                        {!post.authorConsented && (
+                          editingPostId === post.id ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => { setEditingPostId(null); setEditingText(""); }}
+                                className="flex-1 h-10 border border-border rounded-lg text-[14px] font-medium bg-white hover:bg-secondary transition"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleMyPostsSaveEdit(post.id)}
+                                disabled={myPostsWorking[post.id] || !editingText.trim()}
+                                className="flex-1 h-10 bg-primary text-white rounded-lg text-[14px] font-medium hover:bg-primary-hover transition disabled:opacity-40"
+                              >
+                                {myPostsWorking[post.id] ? "Saving…" : "Save"}
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-[13px] text-foreground/50 mb-3">Not shared yet — only you can see this.</p>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => { setEditingPostId(post.id); setEditingText(post.quote); }}
+                                  className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleMyPostsShare(post.id)}
+                                  disabled={myPostsWorking[post.id]}
+                                  className="h-9 px-4 bg-primary text-white rounded-lg text-[13px] font-medium hover:bg-primary-hover transition disabled:opacity-40"
+                                >
+                                  {myPostsWorking[post.id] ? "Sharing…" : "Share to Wisdom Wall"}
+                                </button>
+                                <button
+                                  onClick={() => handleMyPostsKeepPrivate(post.id)}
+                                  disabled={myPostsWorking[post.id]}
+                                  className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
+                                >
+                                  Keep private
+                                </button>
+                              </div>
+                            </>
+                          )
+                        )}
+
+                        {/* State 2: shared, waiting */}
+                        {post.authorConsented && (
+                          pInfo?.postExists === false ? (
+                            /* Partner deleted their post — can never publish */
+                            <>
+                              <p className="text-[13px] text-foreground/60 mb-3">
+                                Your call partner chose to keep this private, so it won't be published. You can keep yours private too.
+                              </p>
+                              <button
+                                onClick={() => handleMyPostsKeepPrivate(post.id)}
+                                disabled={myPostsWorking[post.id]}
+                                className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
+                              >
+                                {myPostsWorking[post.id] ? "Removing…" : "Keep private"}
+                              </button>
+                            </>
+                          ) : (
+                            /* Waiting for partner to share */
+                            <>
+                              <div className="flex items-center gap-2 text-primary text-[13px] font-medium mb-3">
+                                <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                </svg>
+                                Waiting for {pInfo?.name ?? "your call partner"} to share too…
+                              </div>
+                              <button
+                                onClick={() => handleMyPostsUnshare(post)}
+                                disabled={myPostsWorking[post.id]}
+                                className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
+                              >
+                                {myPostsWorking[post.id] ? "Reverting…" : "Make private again"}
+                              </button>
+                            </>
+                          )
+                        )}
                       </div>
-                      {author?.id !== user?.id && author?.role !== user?.role && (
-                        <button
-                          onClick={() => handleRequestCall(post, author)}
-                          disabled={alreadySent}
-                          className={`btn-action px-4 py-2 rounded-[12px] text-[15px] font-medium ${
-                            alreadySent
-                              ? "bg-success/10 text-success"
-                              : "bg-white border border-border hover:bg-primary hover:text-white hover:border-primary"
-                          }`}
-                          aria-live="polite"
-                        >
-                          {alreadySent ? "Request sent" : role === "mentor" ? "Offer a call" : "Request a call"}
-                        </button>
-                      )}
-                    </div>
-                    {alreadySent && author?.role !== user?.role && (
-                      <div className="mt-4 text-[13px] text-success font-medium text-right">
-                        {author?.name} will respond within 2 days.
-                      </div>
+                    ) : (
+                      /* Standard card footer */
+                      <>
+                        <div className="flex items-center justify-between mt-auto pt-6 border-t border-border">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-lg shrink-0">
+                              {author?.name?.[0] ?? "?"}
+                            </div>
+                            <div>
+                              <div className="font-medium text-[15px] text-foreground">{author?.name}</div>
+                              <div className="text-[13px] text-foreground/45 mt-0.5">
+                                {author?.age}{author?.credential ? ` · ${author.credential}` : ""}
+                              </div>
+                            </div>
+                          </div>
+                          {author?.id !== user?.id && author?.role !== user?.role && (
+                            <button
+                              onClick={() => handleRequestCall(post, author)}
+                              disabled={alreadySent}
+                              className={`btn-action px-4 py-2 rounded-[12px] text-[15px] font-medium ${
+                                alreadySent
+                                  ? "bg-success/10 text-success"
+                                  : "bg-white border border-border hover:bg-primary hover:text-white hover:border-primary"
+                              }`}
+                              aria-live="polite"
+                            >
+                              {alreadySent ? "Request sent" : role === "mentor" ? "Offer a call" : "Request a call"}
+                            </button>
+                          )}
+                        </div>
+                        {alreadySent && author?.role !== user?.role && (
+                          <div className="mt-4 text-[13px] text-success font-medium text-right">
+                            {author?.name} will respond within 2 days.
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );

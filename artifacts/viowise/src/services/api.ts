@@ -177,22 +177,41 @@ export async function createPost(input: Omit<Post, "id" | "createdAt">): Promise
   // MOCK: const post: Post = { ...input, id: `post-${Date.now()}`, createdAt: new Date().toISOString() }; postsStore = [post, ...postsStore]; return post;
 }
 
-export async function approvePost(id: string): Promise<Post | undefined> {
-  const { data, error } = await supabase
-    .from("posts")
-    .update({ status: "published", is_new: true })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) { console.error("[api] approvePost:", error.message); return undefined; }
-  return data ? toPost(data as DbPost) : undefined;
-  // MOCK: const post = postsStore.find((p) => p.id === id); if (post) { post.status = "published"; post.isNew = true; } return post;
-}
-
 export async function declinePost(id: string): Promise<void> {
   const { error } = await supabase.from("posts").delete().eq("id", id);
   if (error) console.error("[api] declinePost:", error.message);
   // MOCK: postsStore = postsStore.filter((p) => p.id !== id);
+}
+
+// Revert a share: sets author_consented=false.
+// The AND status='pending_approval' guard is a DB-level safety net — if the post was
+// already published (both consented, trigger fired), the WHERE matches nothing → safe no-op.
+// Returns the updated post, or null if the guard fired (already published).
+export async function revokeConsent(postId: string): Promise<Post | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .update({ author_consented: false })
+    .eq("id", postId)
+    .eq("status", "pending_approval")
+    .select()
+    .maybeSingle();
+  if (error) { console.error("[api] revokeConsent:", error.message); return null; }
+  return data ? toPost(data as DbPost) : null;
+}
+
+// Returns the partner's userId for a call summary session, or null if they deleted their post.
+export async function getCallSummaryPartnerUserId(
+  callSessionId: string,
+  myUserId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("posts")
+    .select("author_id")
+    .eq("call_session_id", callSessionId)
+    .eq("type", "call_summary")
+    .neq("author_id", myUserId)
+    .maybeSingle();
+  return (data as { author_id: string } | null)?.author_id ?? null;
 }
 
 // Posts can be edited by their author but never deleted — a story someone
