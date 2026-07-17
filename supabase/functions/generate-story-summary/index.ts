@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // ─── Editable model constant ───────────────────────────────────────────────────
 // If you get an inference-profile error, try the cross-region prefix variant:
 //   "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-const BEDROCK_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0";
+const BEDROCK_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
