@@ -126,15 +126,6 @@ async function callBedrockClaude(
       `SignedHeaders=${signedHeaders},` +
       `Signature=${signature}`;
 
-    // ── TEMPORARY DEBUG — remove after confirming Bedrock works ──────────────
-    console.log("[story-summary][DEBUG] endpoint:", endpoint);
-    console.log("[story-summary][DEBUG] amzDate:", amzDate);
-    console.log("[story-summary][DEBUG] signedHeaders:", signedHeaders);
-    console.log("[story-summary][DEBUG] canonicalRequest:", JSON.stringify(canonicalRequest));
-    console.log("[story-summary][DEBUG] stringToSign:", JSON.stringify(stringToSign));
-    // (secret key and signature are intentionally NOT logged)
-    // ─────────────────────────────────────────────────────────────────────────
-
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
