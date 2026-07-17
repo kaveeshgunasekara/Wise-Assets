@@ -18,7 +18,6 @@ import type {
 //   interactions : user_id → userId, event_type → eventType, target_id → targetId, created_at → createdAt
 //   users        : all DB columns match TS field names directly (no mapping needed)
 //
-// TODO(backend): replace getStorySummary with a real LLM call via a backend proxy.
 // TODO(backend): replace getMatchReason templating with a real Claude call via a backend proxy.
 
 // ─── DB row types (snake_case shape returned by Supabase) ─────────────────
@@ -268,13 +267,20 @@ export async function getMatchReason(aId: string, bId: string): Promise<string> 
   // MOCK: used usersStore directly — templating logic identical
 }
 
-// TODO(backend): replace with a real LLM-generated summary of the actual
-// conversation transcript once calls are real.
-export async function getStorySummary(_context?: {
-  userId?: string;
-  topic?: string;
-}): Promise<string> {
-  return "It's never too late to begin again. I re-took my nursing exams at 38. It was hard, but it reminded me that courage grows with each small step.";
+// Fetch the current user's own most-recent pending_approval call_summary post.
+// Returns null if none exists yet (Edge Function may still be generating).
+export async function getMyCallSummaryPost(userId: string): Promise<Post | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("author_id", userId)
+    .eq("type", "call_summary")
+    .eq("status", "pending_approval")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  if (error || !data) return null;
+  return toPost(data as DbPost);
 }
 
 // ─── 4. Requests ──────────────────────────────────────────────────────────
