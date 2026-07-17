@@ -73,11 +73,13 @@ export default function VideoCall() {
         }
 
         if (!data?.url) {
-          console.error("[VideoCall] Edge Function returned no URL. Full data:", data);
+          console.error("[VideoCall] Edge Function returned no URL. Full data:", JSON.stringify(data));
           setCallError("Could not start the video call. Please try again.");
           setConnecting(false);
           return;
         }
+
+        console.log("[VideoCall] ✅ Room URL received:", data.url);
 
         // Step 2: embed Daily prebuilt UI once we have the room URL
         if (!callContainerRef.current) {
@@ -85,6 +87,7 @@ export default function VideoCall() {
           return;
         }
 
+        console.log("[VideoCall] Creating Daily iframe frame...");
         const frame = DailyIframe.createFrame(callContainerRef.current, {
           iframeStyle: {
             position: "absolute",
@@ -101,25 +104,44 @@ export default function VideoCall() {
 
         callFrameRef.current = frame;
 
-        frame.on("joined-meeting", () => {
+        frame.on("joined-meeting", (evt) => {
+          console.log("[VideoCall] ✅ joined-meeting event:", JSON.stringify(evt));
           if (!cancelled) setConnecting(false);
         });
 
-        frame.on("participant-left", () => {
+        frame.on("participant-left", (evt) => {
+          console.log("[VideoCall] participant-left event:", JSON.stringify(evt));
           // Any participant-left while we're still in the room means the partner left.
           // (Our own leave is handled by handleEndCall which destroys the frame first.)
           if (!cancelled) setPartnerLeft(true);
         });
 
         frame.on("error", (evt) => {
-          console.error("[VideoCall] Daily error event:", evt);
+          console.error("[VideoCall] ❌ Daily 'error' event:", JSON.stringify(evt));
           if (!cancelled)
             setCallError(
               "Camera or microphone permission was denied, or the call encountered an error. Check your browser permissions and try again."
             );
         });
 
+        frame.on("camera-error", (evt) => {
+          console.error("[VideoCall] ❌ Daily 'camera-error' event:", JSON.stringify(evt));
+        });
+
+        frame.on("load-attempt-failed", (evt) => {
+          console.error("[VideoCall] ❌ Daily 'load-attempt-failed' event:", JSON.stringify(evt));
+          if (!cancelled)
+            setCallError("The call room failed to load. Check your connection and try again.");
+          setConnecting(false);
+        });
+
+        frame.on("left-meeting", (evt) => {
+          console.log("[VideoCall] left-meeting event:", JSON.stringify(evt));
+        });
+
+        console.log("[VideoCall] Calling frame.join() with URL:", data.url, "userName:", user.name);
         await frame.join({ url: data.url, userName: user.name });
+        console.log("[VideoCall] frame.join() resolved (join complete)");
       } catch (err) {
         console.error("[VideoCall] caught unexpected error:", err);
         if (!cancelled) {
