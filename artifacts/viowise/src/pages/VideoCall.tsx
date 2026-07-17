@@ -51,9 +51,14 @@ export default function VideoCall() {
     return () => clearTimeout(timer);
   }, [partnerLeft, user, callPartnerId, storyCaptureConsent, setLocation]);
 
-  // Step 1: create/fetch the Daily room via Edge Function
+  // Step 1: fetch the Daily room URL, then embed the call.
+  // Cleanup destroys the frame on both unmount AND if deps re-run, so a
+  // second effect run never tries to createFrame into an occupied container.
   useEffect(() => {
     if (!user || !callPartnerId) return;
+
+    // Guard: if a frame was somehow left behind, don't create a second one.
+    if (callFrameRef.current) return;
 
     let cancelled = false;
 
@@ -81,7 +86,9 @@ export default function VideoCall() {
 
         console.log("[VideoCall] ✅ Room URL received:", data.url);
 
-        // Step 2: embed Daily prebuilt UI once we have the room URL
+        // Re-check after the async gap — cleanup may have run while awaiting.
+        if (cancelled) return;
+
         if (!callContainerRef.current) {
           console.error("[VideoCall] callContainerRef is null — cannot mount Daily frame");
           return;
@@ -101,6 +108,13 @@ export default function VideoCall() {
           showLeaveButton: false,
           showFullscreenButton: false,
         });
+
+        // If cleanup fired in the narrow window between createFrame and here,
+        // destroy the frame immediately rather than leaving it orphaned.
+        if (cancelled) {
+          frame.destroy();
+          return;
+        }
 
         callFrameRef.current = frame;
 
@@ -153,18 +167,16 @@ export default function VideoCall() {
 
     return () => {
       cancelled = true;
-    };
-  }, [user?.id, callPartnerId]);
-
-  // Destroy frame on unmount to avoid leaks
-  useEffect(() => {
-    return () => {
-      if (callFrameRef.current) {
-        callFrameRef.current.leave().then(() => callFrameRef.current?.destroy()).catch(() => callFrameRef.current?.destroy());
+      // Destroy the frame here — covers both unmount and any re-run of this
+      // effect. Without this, a second run calls createFrame into an occupied
+      // container and Daily throws a postMessage null error internally.
+      const frame = callFrameRef.current;
+      if (frame) {
+        frame.leave().then(() => frame.destroy()).catch(() => frame.destroy());
         callFrameRef.current = null;
       }
     };
-  }, []);
+  }, [user?.id, callPartnerId]);
 
   // ── Timer (wall-clock elapsed) ────────────────────────────────────────────
   const [timer, setTimer] = useState(0);
