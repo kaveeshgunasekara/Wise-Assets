@@ -1,35 +1,41 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AppNav from "@/components/AppNav";
 import {
-  approvePost,
+  consentToShare,
   declinePost,
   editPost,
   getMyCallSummaryPost,
+  getPostById,
   getUserById,
   reportUser,
 } from "@/services/api";
 import type { Post, User } from "@/types";
 
+type ShareState =
+  | "idle"      // user hasn't decided yet
+  | "waiting"   // user shared — waiting for partner
+  | "published" // both consented — live on Wisdom Wall
+  | "private";  // user kept it private
+
 export default function StoryCapture() {
   const { user, callPartnerId } = useApp();
-  const [, setLocation] = useLocation();
 
-  // ── Post state (fetched from DB, created by the Edge Function) ────────────
+  // ── Post (fetched from DB, created by the Edge Function) ─────────────────
   const [post, setPost] = useState<Post | null>(null);
   const [loadingPost, setLoadingPost] = useState(true);
   const [quoteText, setQuoteText] = useState("");
   const [originalQuoteText, setOriginalQuoteText] = useState("");
 
-  // Poll for the pending_approval call_summary post — the Edge Function may
-  // still be running when the user lands here, so retry up to 30 s.
+  // Poll for the call_summary post — Edge Function runs ~2-4 s after call ends.
+  // Accepts both pending_approval and published (partner may consent first).
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     let attempts = 0;
-    const MAX_ATTEMPTS = 15; // 15 × 2 s = 30 s max
+    const MAX_ATTEMPTS = 15; // 15 × 2 s = 30 s
 
     const poll = async () => {
       try {
@@ -40,6 +46,9 @@ export default function StoryCapture() {
           setQuoteText(found.quote);
           setOriginalQuoteText(found.quote);
           setLoadingPost(false);
+          // If partner already consented before we even loaded, jump straight to waiting/published
+          if (found.status === "published") setShareState("published");
+          else if (found.authorConsented) setShareState("waiting");
           return;
         }
       } catch {
@@ -49,7 +58,7 @@ export default function StoryCapture() {
         attempts++;
         timer = setTimeout(poll, 2000);
       } else {
-        if (!cancelled) setLoadingPost(false); // give up after 30 s
+        if (!cancelled) setLoadingPost(false);
       }
     };
 
@@ -68,14 +77,74 @@ export default function StoryCapture() {
   }, [callPartnerId]);
   const partnerName = partner?.name ?? "your match";
 
-  // ── UI state ──────────────────────────────────────────────────────────────
+  // ── Share state machine ───────────────────────────────────────────────────
+  const [shareState, setShareState] = useState<ShareState>("idle");
   const [editing, setEditing] = useState(false);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [scheduleMessage, setScheduleMessage] = useState(false);
   const [working, setWorking] = useState(false);
+
+  // After user consents, poll their own post by ID until the trigger promotes it.
+  useEffect(() => {
+    if (shareState !== "waiting" || !post) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const poll = async () => {
+      try {
+        const latest = await getPostById(post.id);
+        if (cancelled) return;
+        if (!latest) {
+          // Post was deleted — shouldn't happen after consenting, but handle gracefully
+          return;
+        }
+        if (latest.status === "published") {
+          setShareState("published");
+          return;
+        }
+      } catch {
+        if (cancelled) return;
+      }
+      timer = setTimeout(poll, 2000);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [shareState, post]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleShare = async () => {
+    if (!user || !post || working) return;
+    setWorking(true);
+    try {
+      if (quoteText !== originalQuoteText) {
+        await editPost(post.id, { quote: quoteText });
+      }
+      await consentToShare(post.id);
+      setShareState("waiting");
+    } catch {
+      // leave in idle so user can retry
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handlePrivate = async () => {
+    if (working) return;
+    setWorking(true);
+    if (post) {
+      try { await declinePost(post.id); } catch { /* non-fatal */ }
+    }
+    setWorking(false);
+    setShareState("private");
+  };
+
+  // ── Report modal ──────────────────────────────────────────────────────────
   const [reportModal, setReportModal] = useState<number>(0);
   const [reportReason, setReportReason] = useState("");
   const [reportDetails, setReportDetails] = useState("");
+  const [scheduleMessage, setScheduleMessage] = useState(false);
 
   const reportReasons = [
     "Made me uncomfortable",
@@ -90,44 +159,9 @@ export default function StoryCapture() {
     if (!user || !callPartnerId || !reportReason) return;
     try {
       await reportUser(user.id, callPartnerId, "call", reportReason, reportDetails || undefined);
-    } catch {
-      // non-fatal: still show confirmation
-    }
+    } catch { /* non-fatal */ }
     setReportModal(2);
     setReportDetails("");
-  };
-
-  // "Share to Wisdom Wall" — approve the existing DB post (never createPost)
-  const handleShare = async () => {
-    if (!user || !post || working) return;
-    setWorking(true);
-    try {
-      // Save edits first if the text changed
-      if (quoteText !== originalQuoteText) {
-        await editPost(post.id, { quote: quoteText });
-      }
-      await approvePost(post.id);
-      setActionMessage("Your story is on the Wisdom Wall!");
-    } catch {
-      setActionMessage("Something went wrong — please try again.");
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  // "Keep it private" — decline/delete the pending post
-  const handlePrivate = async () => {
-    if (working) return;
-    setWorking(true);
-    if (post) {
-      try {
-        await declinePost(post.id);
-      } catch {
-        // non-fatal
-      }
-    }
-    setWorking(false);
-    setActionMessage("Saved to your private archive. Only you can see this.");
   };
 
   return (
@@ -143,7 +177,7 @@ export default function StoryCapture() {
           </h1>
         </div>
 
-        {/* ── Summary card ─────────────────────────────────────────────── */}
+        {/* ── Summary card ──────────────────────────────────────────────── */}
         <div className="bg-[#F4F1FC] border border-[#C5BCDF] p-8 sm:p-12 rounded-[16px] card-shadow mb-10 relative">
           <div className="flex items-center gap-2 text-primary font-medium text-base mb-8 border-b border-[#C5BCDF]/50 pb-4">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -154,17 +188,30 @@ export default function StoryCapture() {
 
           <h2 className="text-[20px] font-semibold text-foreground mb-4">Reflections from your call</h2>
 
-          {/* Loading / polling state */}
           {loadingPost ? (
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
               <p className="text-[18px] text-foreground/60 font-serif italic">Generating your summary…</p>
             </div>
           ) : !post ? (
-            /* No summary found after 30 s */
-            <p className="font-serif italic text-[20px] leading-relaxed text-foreground/60 mb-8 py-4">
-              Your summary is still being prepared. Check the Wisdom Wall in a moment — it will appear there once it's ready.
-            </p>
+            <div className="py-4">
+              <p className="font-serif italic text-[20px] leading-relaxed text-foreground/60 mb-4">
+                Your summary is still being prepared.
+              </p>
+              <button
+                onClick={() => {
+                  if (!user?.id) return;
+                  setLoadingPost(true);
+                  getMyCallSummaryPost(user.id).then((found) => {
+                    if (found) { setPost(found); setQuoteText(found.quote); setOriginalQuoteText(found.quote); }
+                    setLoadingPost(false);
+                  }).catch(() => setLoadingPost(false));
+                }}
+                className="text-primary font-medium text-base underline"
+              >
+                Refresh
+              </button>
+            </div>
           ) : editing ? (
             <textarea
               value={quoteText}
@@ -177,7 +224,7 @@ export default function StoryCapture() {
             </p>
           )}
 
-          {!loadingPost && (
+          {!loadingPost && post && (
             <div className="flex items-center justify-between">
               <div className="font-medium text-[16px] text-foreground/80">
                 — {user?.name ?? "You"}{user?.age ? `, ${user.age}` : ""}
@@ -202,24 +249,8 @@ export default function StoryCapture() {
           )}
         </div>
 
-        {/* ── Action buttons / confirmation ──────────────────────────── */}
-        {actionMessage ? (
-          <div
-            className={`p-6 rounded-[12px] text-center font-medium text-[18px] mb-8 border ${
-              actionMessage.includes("Wisdom Wall")
-                ? "bg-primary/5 text-primary border-primary/20"
-                : "bg-success/5 text-success border-success/20"
-            }`}
-            aria-live="polite"
-          >
-            {actionMessage}
-            <div className="mt-4">
-              <Link href="/wall" className="text-[16px] underline">
-                Return to Wisdom Wall
-              </Link>
-            </div>
-          </div>
-        ) : (
+        {/* ── Action area — switches on shareState ──────────────────────── */}
+        {shareState === "idle" && (
           <>
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <button
@@ -238,19 +269,74 @@ export default function StoryCapture() {
               </button>
               <button
                 onClick={handleShare}
-                disabled={loadingPost || !post || working}
+                disabled={loadingPost || !post || working || editing}
                 className="flex-1 h-[56px] bg-primary text-white rounded-[12px] text-[18px] font-medium hover:bg-primary-hover transition-colors shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {working ? "Saving…" : "Share to Wisdom Wall"}
+                {working ? "Saving…" : "Share my story"}
               </button>
             </div>
             <p className="text-center text-[16px] text-foreground/60 mb-12">
-              Only you can see this until you share it.
+              Your story will only publish when both you and {partnerName} choose to share.
             </p>
           </>
         )}
 
-        {/* ── Footer actions ─────────────────────────────────────────── */}
+        {shareState === "waiting" && (
+          <div className="p-6 rounded-[12px] text-center border bg-primary/5 border-primary/20 mb-8" aria-live="polite">
+            <div className="flex items-center justify-center gap-2 text-primary font-semibold text-[18px] mb-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              You've shared
+            </div>
+            <div className="flex items-center justify-center gap-2 text-foreground/60 text-[16px]">
+              <div className="w-4 h-4 rounded-full border-2 border-foreground/30 border-t-foreground/60 animate-spin" />
+              Waiting for {partnerName} to decide…
+            </div>
+            <p className="text-[14px] text-foreground/40 mt-3">
+              If they share too, both summaries will publish to the Wisdom Wall.
+            </p>
+            <div className="mt-4">
+              <Link href="/wall" className="text-[16px] text-primary underline">
+                Return to Wisdom Wall
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {shareState === "published" && (
+          <div className="p-6 rounded-[12px] text-center border bg-success/5 border-success/20 mb-8" aria-live="polite">
+            <div className="flex items-center justify-center gap-2 text-success font-semibold text-[20px] mb-2">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Published to the Wisdom Wall
+            </div>
+            <p className="text-[16px] text-foreground/60">
+              Both you and {partnerName} chose to share. Your stories are now live.
+            </p>
+            <div className="mt-4">
+              <Link href="/wall" className="text-[16px] text-primary underline">
+                See it on the Wisdom Wall
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {shareState === "private" && (
+          <div className="p-6 rounded-[12px] text-center border bg-foreground/5 border-border mb-8" aria-live="polite">
+            <p className="text-[18px] font-medium text-foreground/70">
+              Kept private — only you can see this.
+            </p>
+            <div className="mt-4">
+              <Link href="/wall" className="text-[16px] text-primary underline">
+                Return to Wisdom Wall
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── Footer actions ─────────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-6 pt-12 border-t border-border">
           {scheduleMessage ? (
             <p className="text-success font-medium text-[18px] flex items-center gap-2" aria-live="polite">
@@ -281,7 +367,7 @@ export default function StoryCapture() {
         </div>
       </main>
 
-      {/* ── Report modal ──────────────────────────────────────────────── */}
+      {/* ── Report modal ───────────────────────────────────────────────────── */}
       {reportModal > 0 && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[16px] card-shadow max-w-md w-full p-8">

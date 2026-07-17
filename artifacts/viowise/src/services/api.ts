@@ -32,6 +32,8 @@ type DbPost = {
   status: Post["status"];
   is_new: boolean | null;
   created_at: string;
+  call_session_id: string | null;
+  author_consented: boolean | null;
 };
 
 type DbRequest = {
@@ -66,6 +68,8 @@ function toPost(r: DbPost): Post {
     status: r.status,
     ...(r.is_new != null && { isNew: r.is_new }),
     createdAt: r.created_at,
+    ...(r.call_session_id != null && { callSessionId: r.call_session_id }),
+    ...(r.author_consented != null && { authorConsented: r.author_consented }),
   };
 }
 
@@ -267,21 +271,45 @@ export async function getMatchReason(aId: string, bId: string): Promise<string> 
   // MOCK: used usersStore directly — templating logic identical
 }
 
-// Fetch the current user's own most-recent pending_approval call_summary post.
+// Fetch the current user's own most-recent call_summary post (pending or published).
+// Looks back 6 hours so old published summaries from previous calls don't surface.
 // Returns null if none exists yet (Edge Function may still be generating).
 export async function getMyCallSummaryPost(userId: string): Promise<Post | null> {
+  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("posts")
     .select("*")
     .eq("author_id", userId)
     .eq("type", "call_summary")
-    .eq("status", "pending_approval")
+    .in("status", ["pending_approval", "published"])
+    .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle(); // unlike .single(), never errors when 0 rows found
   if (error) { console.error("[api] getMyCallSummaryPost:", error.message); return null; }
   if (!data) return null;
   return toPost(data as DbPost);
+}
+
+// Fetch a single post by ID regardless of status (used to poll for dual-consent promotion).
+export async function getPostById(postId: string): Promise<Post | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("id", postId)
+    .maybeSingle();
+  if (error) { console.error("[api] getPostById:", error.message); return null; }
+  return data ? toPost(data as DbPost) : null;
+}
+
+// Mark this user's consent to share. The DB trigger checks if the partner's post
+// also has author_consented=true; if so, it promotes both posts to status='published'.
+export async function consentToShare(postId: string): Promise<void> {
+  const { error } = await supabase
+    .from("posts")
+    .update({ author_consented: true })
+    .eq("id", postId);
+  if (error) throw new Error(`[api] consentToShare: ${error.message}`);
 }
 
 // ─── 4. Requests ──────────────────────────────────────────────────────────

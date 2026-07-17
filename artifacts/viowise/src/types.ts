@@ -28,6 +28,9 @@ export interface Post {
   status: PostStatus;
   isNew?: boolean;
   createdAt: string;
+  // Dual-consent fields (call_summary posts only)
+  callSessionId?: string;
+  authorConsented?: boolean;
 }
 
 export type RequestIntent = "seek" | "offer";
