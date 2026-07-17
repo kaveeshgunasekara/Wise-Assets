@@ -7,11 +7,16 @@ import {
   declinePost,
   editPost,
   getMyCallSummaryPost,
+  getMyCallSummaryPostByTime,
   getPostById,
   getUserById,
   reportUser,
 } from "@/services/api";
 import type { Post, User } from "@/types";
+
+// sessionStorage keys written by VideoCall before navigation
+const SESSION_ID_KEY = "viowise_call_session_id";   // ender only — arrives ~2-4s after nav
+const CALL_ENDED_AT_KEY = "viowise_call_ended_at";  // both paths — written at nav time
 
 type ShareState =
   | "idle"      // user hasn't decided yet
@@ -28,41 +33,101 @@ export default function StoryCapture() {
   const [quoteText, setQuoteText] = useState("");
   const [originalQuoteText, setOriginalQuoteText] = useState("");
 
-  // Poll for the call_summary post — Edge Function runs ~2-4 s after call ends.
-  // Accepts both pending_approval and published (partner may consent first).
+  // Two-phase polling strategy:
+  //
+  // Phase 1 — find the callSessionId (max ~10 s):
+  //   ENDER path:  callSessionId written to sessionStorage by the Edge Function
+  //                Promise .then() callback ~2-4 s after navigation. Poll every
+  //                500 ms until it arrives, then switch to Phase 2a.
+  //   PARTNER path: callSessionId never arrives. After 10 s give up and fall
+  //                back to Phase 2b (timestamp-based query).
+  //
+  // Phase 2a — exact query: getMyCallSummaryPost(userId, callSessionId)
+  //   One unambiguous row: author_id + call_session_id. No stale-post risk.
+  //
+  // Phase 2b — timestamp query: getMyCallSummaryPostByTime(userId, callEndedAt)
+  //   Searches within a tight 2-minute window of when the call ended.
+  //   Used by the partner who never receives callSessionId.
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
-    let attempts = 0;
-    const MAX_ATTEMPTS = 15; // 15 × 2 s = 30 s
 
-    const poll = async () => {
+    // ── Phase 1: wait for callSessionId ─────────────────────────────────────
+    let sessionWaitMs = 0;
+    const SESSION_WAIT_LIMIT_MS = 10_000;
+    const SESSION_POLL_INTERVAL_MS = 500;
+
+    // ── Phase 2: poll for the post once we have a query strategy ────────────
+    let postAttempts = 0;
+    const MAX_POST_ATTEMPTS = 20; // 20 × 2 s = 40 s
+    const POST_POLL_INTERVAL_MS = 2000;
+
+    const applyPost = (found: Post) => {
+      setPost(found);
+      setQuoteText(found.quote);
+      setOriginalQuoteText(found.quote);
+      setLoadingPost(false);
+      if (found.status === "published") setShareState("published");
+      else if (found.authorConsented) setShareState("waiting");
+    };
+
+    const pollForPost = async (
+      queryFn: () => Promise<Post | null>,
+    ) => {
+      if (cancelled) return;
       try {
-        const found = await getMyCallSummaryPost(user.id);
+        const found = await queryFn();
         if (cancelled) return;
-        if (found) {
-          setPost(found);
-          setQuoteText(found.quote);
-          setOriginalQuoteText(found.quote);
-          setLoadingPost(false);
-          // If partner already consented before we even loaded, jump straight to waiting/published
-          if (found.status === "published") setShareState("published");
-          else if (found.authorConsented) setShareState("waiting");
-          return;
-        }
+        if (found) { applyPost(found); return; }
       } catch {
         if (cancelled) return;
       }
-      if (attempts < MAX_ATTEMPTS) {
-        attempts++;
-        timer = setTimeout(poll, 2000);
+      if (postAttempts < MAX_POST_ATTEMPTS) {
+        postAttempts++;
+        timer = setTimeout(() => pollForPost(queryFn), POST_POLL_INTERVAL_MS);
       } else {
-        if (!cancelled) setLoadingPost(false);
+        if (!cancelled) setLoadingPost(false); // gave up
       }
     };
 
-    poll();
+    const startPostPolling = () => {
+      const sessionId = sessionStorage.getItem(SESSION_ID_KEY);
+      const callEndedAtStr = sessionStorage.getItem(CALL_ENDED_AT_KEY);
+
+      if (sessionId) {
+        // Exact query — ender path
+        console.log("[StoryCapture] using exact callSessionId:", sessionId);
+        pollForPost(() => getMyCallSummaryPost(user.id, sessionId));
+      } else if (callEndedAtStr) {
+        // Timestamp fallback — partner path
+        const callEndedAt = parseInt(callEndedAtStr, 10);
+        console.log("[StoryCapture] using timestamp fallback, callEndedAt:", new Date(callEndedAt).toISOString());
+        pollForPost(() => getMyCallSummaryPostByTime(user.id, callEndedAt));
+      } else {
+        // No navigation context at all (e.g. direct URL visit)
+        console.warn("[StoryCapture] no callSessionId or callEndedAt in sessionStorage");
+        setLoadingPost(false);
+      }
+    };
+
+    const waitForSessionId = () => {
+      if (cancelled) return;
+      if (sessionStorage.getItem(SESSION_ID_KEY)) {
+        // callSessionId arrived — switch to exact query
+        startPostPolling();
+        return;
+      }
+      sessionWaitMs += SESSION_POLL_INTERVAL_MS;
+      if (sessionWaitMs < SESSION_WAIT_LIMIT_MS) {
+        timer = setTimeout(waitForSessionId, SESSION_POLL_INTERVAL_MS);
+      } else {
+        // 10 s elapsed, no callSessionId — use timestamp fallback
+        startPostPolling();
+      }
+    };
+
+    waitForSessionId();
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -82,21 +147,18 @@ export default function StoryCapture() {
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
 
-  // After user consents, poll their own post by ID until the trigger promotes it.
+  // After user consents, poll their own post by ID until the DB trigger promotes it.
   useEffect(() => {
     if (shareState !== "waiting" || !post) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
 
     const poll = async () => {
+      if (cancelled) return;
       try {
         const latest = await getPostById(post.id);
         if (cancelled) return;
-        if (!latest) {
-          // Post was deleted — shouldn't happen after consenting, but handle gracefully
-          return;
-        }
-        if (latest.status === "published") {
+        if (latest?.status === "published") {
           setShareState("published");
           return;
         }
@@ -138,6 +200,32 @@ export default function StoryCapture() {
     }
     setWorking(false);
     setShareState("private");
+  };
+
+  // ── Refresh button (shown when poll gives up without finding a post) ──────
+  const handleRefresh = () => {
+    if (!user?.id) return;
+    setLoadingPost(true);
+    const sessionId = sessionStorage.getItem(SESSION_ID_KEY);
+    const callEndedAtStr = sessionStorage.getItem(CALL_ENDED_AT_KEY);
+    const fetchFn = sessionId
+      ? () => getMyCallSummaryPost(user.id, sessionId)
+      : callEndedAtStr
+        ? () => getMyCallSummaryPostByTime(user.id, parseInt(callEndedAtStr, 10))
+        : null;
+    if (!fetchFn) { setLoadingPost(false); return; }
+    fetchFn()
+      .then((found) => {
+        if (found) {
+          setPost(found);
+          setQuoteText(found.quote);
+          setOriginalQuoteText(found.quote);
+          if (found.status === "published") setShareState("published");
+          else if (found.authorConsented) setShareState("waiting");
+        }
+        setLoadingPost(false);
+      })
+      .catch(() => setLoadingPost(false));
   };
 
   // ── Report modal ──────────────────────────────────────────────────────────
@@ -199,14 +287,7 @@ export default function StoryCapture() {
                 Your summary is still being prepared.
               </p>
               <button
-                onClick={() => {
-                  if (!user?.id) return;
-                  setLoadingPost(true);
-                  getMyCallSummaryPost(user.id).then((found) => {
-                    if (found) { setPost(found); setQuoteText(found.quote); setOriginalQuoteText(found.quote); }
-                    setLoadingPost(false);
-                  }).catch(() => setLoadingPost(false));
-                }}
+                onClick={handleRefresh}
                 className="text-primary font-medium text-base underline"
               >
                 Refresh

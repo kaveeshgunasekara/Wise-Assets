@@ -39,6 +39,13 @@ export default function VideoCall() {
       if (user && callPartnerId) {
         completeRequest(user.id, callPartnerId).catch(() => {});
       }
+      // Partner path: we don't invoke the Edge Function (ender does that), but we
+      // store a timestamp so StoryCapture can find the post via a tight time window.
+      if (storyCaptureConsent) {
+        sessionStorage.setItem("viowise_call_ended_at", Date.now().toString());
+        // Partner never receives callSessionId — clear any stale one from a prior call.
+        sessionStorage.removeItem("viowise_call_session_id");
+      }
       setLocation(storyCaptureConsent ? "/story-capture" : "/wall");
     }, 2000);
     return () => clearTimeout(timer);
@@ -183,22 +190,39 @@ export default function VideoCall() {
     if (user && callPartnerId) {
       completeRequest(user.id, callPartnerId).catch(() => {});
 
-      // Fire-and-forget: generate two pending-approval story summaries via
-      // Claude. Only the user who explicitly ends the call triggers this so
-      // we don't double-create posts when both sides disconnect at once.
+      // Generate two pending-approval story summaries via Claude.
+      // Only the user who explicitly ends the call triggers this so we don't
+      // double-create posts when both sides disconnect at once.
       if (storyCaptureConsent) {
         const payload = { userA: user.id, userB: callPartnerId };
         console.log("[handleEndCall] invoking generate-story-summary with payload:", payload);
+
+        // Store a timestamp so StoryCapture has a fallback if callSessionId
+        // is delayed. Clear any stale session ID from a previous call.
+        sessionStorage.setItem("viowise_call_ended_at", Date.now().toString());
+        sessionStorage.removeItem("viowise_call_session_id");
+
+        // Start the invoke WITHOUT awaiting — navigate immediately so the user
+        // lands on /story-capture right away. The Promise survives component
+        // unmount; its .then() writes the callSessionId to sessionStorage once
+        // the Edge Function responds (~2-4 s), which StoryCapture polls for.
         supabase.functions
           .invoke("generate-story-summary", { body: payload })
           .then((result) => {
             console.log("[handleEndCall] generate-story-summary result:", result);
+            const callSessionId = result.data?.callSessionId as string | undefined;
+            if (callSessionId) {
+              sessionStorage.setItem("viowise_call_session_id", callSessionId);
+              console.log("[handleEndCall] callSessionId stored:", callSessionId);
+            } else {
+              console.warn("[handleEndCall] Edge Function returned no callSessionId:", result);
+            }
           })
           .catch((err) => {
             console.error("[handleEndCall] generate-story-summary error:", err);
           });
       } else {
-        console.warn("[handleEndCall] storyCaptureConsent is FALSE — Edge Function NOT invoked. Summary will not be generated.");
+        console.warn("[handleEndCall] storyCaptureConsent is FALSE — Edge Function NOT invoked.");
       }
     } else {
       console.warn("[handleEndCall] user or callPartnerId is null — Edge Function NOT invoked.", {

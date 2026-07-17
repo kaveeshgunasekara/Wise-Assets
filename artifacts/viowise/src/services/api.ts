@@ -271,24 +271,44 @@ export async function getMatchReason(aId: string, bId: string): Promise<string> 
   // MOCK: used usersStore directly — templating logic identical
 }
 
-// Fetch the current user's own most-recent call_summary post (pending or published).
-// Looks back 6 hours so old published summaries from previous calls don't surface.
-// Returns null if none exists yet (Edge Function may still be generating).
-export async function getMyCallSummaryPost(userId: string): Promise<Post | null> {
-  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+// Fetch this user's call_summary post for a SPECIFIC call session.
+// One unambiguous row: author_id + call_session_id uniquely identifies it.
+// Returns null if the Edge Function hasn't written the post yet (still generating).
+export async function getMyCallSummaryPost(
+  userId: string,
+  callSessionId: string,
+): Promise<Post | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("author_id", userId)
+    .eq("call_session_id", callSessionId)
+    .eq("type", "call_summary")
+    .maybeSingle();
+  if (error) { console.error("[api] getMyCallSummaryPost:", error.message); return null; }
+  return data ? toPost(data as DbPost) : null;
+}
+
+// Fallback for the partner (who never receives callSessionId): find their call_summary
+// post by a tight timestamp window around when the call ended. The ender invokes the
+// Edge Function at call-end; posts arrive in the DB ~2-4 s later. We search within
+// 2 minutes before the timestamp to handle any clock skew or delay.
+export async function getMyCallSummaryPostByTime(
+  userId: string,
+  callEndedAtMs: number,
+): Promise<Post | null> {
+  const since = new Date(callEndedAtMs - 2 * 60 * 1000).toISOString(); // 2 min before
   const { data, error } = await supabase
     .from("posts")
     .select("*")
     .eq("author_id", userId)
     .eq("type", "call_summary")
-    .in("status", ["pending_approval", "published"])
-    .gte("created_at", cutoff)
+    .gte("created_at", since)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle(); // unlike .single(), never errors when 0 rows found
-  if (error) { console.error("[api] getMyCallSummaryPost:", error.message); return null; }
-  if (!data) return null;
-  return toPost(data as DbPost);
+    .maybeSingle();
+  if (error) { console.error("[api] getMyCallSummaryPostByTime:", error.message); return null; }
+  return data ? toPost(data as DbPost) : null;
 }
 
 // Fetch a single post by ID regardless of status (used to poll for dual-consent promotion).
