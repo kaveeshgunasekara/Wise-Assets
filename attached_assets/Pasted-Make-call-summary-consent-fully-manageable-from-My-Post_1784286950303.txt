@@ -1,0 +1,21 @@
+Make call-summary consent fully manageable from "My Posts" so nothing gets stuck at pending. Confirmed design decisions:
+- Pending call summaries appear in My Posts with status + action buttons (not only on the story-capture page).
+- A user who already shared CAN un-share (revert to private) anytime BEFORE the summary publishes.
+
+IMPLEMENT:
+1. In "My Posts", show the user's call_summary posts with clear state + actions:
+   - author_consented = false, pending: buttons "Share to Wisdom Wall", "Keep private", "Edit".
+   - author_consented = true, still pending (partner hasn't shared): status "Waiting for [partner name] to share" + button "Make private again" (un-share).
+   - published: label "Published ✓ — live on the Wisdom Wall".
+2. Actions map to:
+   - Share → consentToShare(postId) (sets author_consented=true; dual-consent trigger publishes both if partner also consented).
+   - Keep private → decline: delete the user's post (resolves it, removes from pending).
+   - Un-share ("Make private again") → set author_consented=false (reverts to the not-yet-shared state; must NOT un-publish an already-published post — only allowed while still pending).
+   - Edit → edit the quote text of the user's own post before sharing.
+3. IMPORTANT: un-share must only work while pending. Once status='published' (both consented), it's locked — no un-share. Add a guard.
+4. The story-capture page keeps the same immediate post-call actions, but these SAME actions are now also in My Posts so summaries never get stuck.
+5. Show partner names via getUserById using the call_session_id link.
+
+Also: I need a DB function/RLS check — un-share sets author_consented=false via UPDATE on the user's own post (allowed by posts_update_own policy). Confirm the dual_consent trigger does NOT mis-fire on un-share (it only publishes when flipping TO true with partner also true, so setting false is safe). Verify this.
+
+Show me the plan before implementing, especially the My Posts UI states and the un-share guard.
