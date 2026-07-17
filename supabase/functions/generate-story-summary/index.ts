@@ -70,12 +70,15 @@ async function callBedrockClaude(
   fallback: string,
 ): Promise<{ text: string; usedClaude: boolean }> {
   try {
-    // The colon in the model ID must be percent-encoded in the path.
-    // encodeURIComponent encodes ':' → '%3A' but leaves '.' and '-' unchanged.
-    const modelPath = encodeURIComponent(BEDROCK_MODEL_ID);
-    const canonicalUri = `/model/${modelPath}/invoke`;
+    // SigV4 requires DOUBLE-encoding in the canonical URI used for signing,
+    // but the actual fetch URL uses single-encoding.
+    //   singleEncoded: "...v1%3A0"   → used in the real request URL
+    //   doubleEncoded: "...v1%253A0" → used only inside canonicalRequest for signing
+    const singleEncoded = encodeURIComponent(BEDROCK_MODEL_ID); // colon → %3A
+    const doubleEncoded = singleEncoded.replace(/%/g, "%25");   // %3A  → %253A
+    const canonicalUri = `/model/${doubleEncoded}/invoke`; // signing only
     const host = `bedrock-runtime.${region}.amazonaws.com`;
-    const endpoint = `https://${host}${canonicalUri}`;
+    const endpoint = `https://${host}/model/${singleEncoded}/invoke`; // actual request
 
     // Request body — model ID goes in the URL, NOT here
     const requestBody = JSON.stringify({
