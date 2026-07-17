@@ -83,7 +83,7 @@ async function callBedrockClaude(
     // Request body — model ID goes in the URL, NOT here
     const requestBody = JSON.stringify({
       anthropic_version: "bedrock-2023-05-31",
-      max_tokens: 200,
+      max_tokens: 120,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -275,19 +275,16 @@ serve(async (req) => {
         : "";
 
       const elderPrompt =
-        `${elder.name} is a mentor (60+ years old) who just had a video call with ${younger.name}, ` +
-        `a younger person seeking guidance. Topic: ${topicLabel}.${transcriptSection}\n\n` +
-        `Write 2–3 warm, dignified sentences for ${elder.name}'s post on a wisdom-sharing platform. ` +
-        `Frame it as wisdom THEY shared — honouring their experience. ` +
-        `Write in first-person or warm reflective style. ` +
-        `Be specific to the topic. Do not add quotation marks or a prefix like "Here is...".`;
+        `${elder.name} (mentor, 60+) just shared wisdom with ${younger.name} about: ${topicLabel}.${transcriptSection}\n\n` +
+        `Write ONLY 1-2 short sentences (max 40 words) for ${elder.name}'s post on a wisdom-sharing platform. ` +
+        `Frame it as wisdom THEY shared, honouring their experience. First-person or warm reflective tone. ` +
+        `Plain text only — no title, no markdown, no headers, no # symbols, no quotation marks, no prefix. Just the summary itself.`;
 
       const youngerPrompt =
-        `${younger.name} just had a video call with ${elder.name}, an experienced mentor. ` +
-        `Topic: ${topicLabel}.${transcriptSection}\n\n` +
-        `Write 2–3 sentences for ${younger.name}'s post on a wisdom-sharing platform. ` +
-        `Frame it as guidance THEY received — a lesson for their journey. ` +
-        `Be genuine and specific to the topic. Do not add quotation marks or a prefix like "Here is...".`;
+        `${younger.name} just received guidance from ${elder.name} (mentor, 60+) about: ${topicLabel}.${transcriptSection}\n\n` +
+        `Write ONLY 1-2 short sentences (max 40 words) for ${younger.name}'s post on a wisdom-sharing platform. ` +
+        `Frame it as guidance THEY received — a lesson for their journey. Genuine and personal tone. ` +
+        `Plain text only — no title, no markdown, no headers, no # symbols, no quotation marks, no prefix. Just the summary itself.`;
 
       const [elderResult, youngerResult] = await Promise.all([
         callBedrockClaude(awsAccessKeyId, awsSecretAccessKey, awsRegion, elderPrompt, elderFallback),
