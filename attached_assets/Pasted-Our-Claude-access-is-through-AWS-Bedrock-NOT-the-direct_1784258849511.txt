@@ -1,0 +1,20 @@
+Our Claude access is through AWS Bedrock, NOT the direct Anthropic API — that's why generate-story-summary fails with "invalid x-api-key" (it calls api.anthropic.com). Rewrite ONLY the Claude API call to use AWS Bedrock. Keep everything else identical: profile fetch, elder/younger detection, the two personalized prompts, fallback logic, call_sessions row creation, and inserting two pending_approval posts.
+
+Bedrock config:
+- Credential type: AWS Access Key ID + Secret Access Key (no session token)
+- Region: us-west-2
+- Model ID: anthropic.claude-haiku-4-5-20251001-v1:0
+  → Put this in a clearly-marked editable constant at the top: const BEDROCK_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0";
+  → Add a comment noting that if it fails with an inference-profile error, try prefixing "us." → "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+Implementation (Deno/TypeScript Supabase Edge Function — the Python AnthropicBedrock SDK does NOT apply):
+- Call the Bedrock InvokeModel REST endpoint: https://bedrock-runtime.us-west-2.amazonaws.com/model/<BEDROCK_MODEL_ID>/invoke
+- Implement AWS Signature v4 signing for the request using AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (service name "bedrock", region us-west-2). Implement SigV4 with Deno's built-in Web Crypto (crypto.subtle) — do not rely on Node-only libraries.
+- Request body format for Claude on Bedrock: { "anthropic_version": "bedrock-2023-05-31", "max_tokens": 200, "messages": [{"role":"user","content": prompt}] } — the model ID goes in the URL, NOT the body. Content-Type: application/json.
+- Parse the Bedrock response: the JSON has content[0].text just like the direct API.
+- Read secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION.
+- Keep the two differentiated prompts (elder = wisdom shared; younger = guidance received), the hardcoded fallback if the call fails, CORS, and the two-post insertion.
+- FIX the usedClaude bug: only set usedClaude=true if Claude actually returned text (not on fallback). Add clear console.error logging of any Bedrock error status + body so I can debug from the logs.
+- Remove the old ANTHROPIC_API_KEY / api.anthropic.com code.
+
+Give me the FULL updated Edge Function code and tell me exactly which Supabase secrets to set.

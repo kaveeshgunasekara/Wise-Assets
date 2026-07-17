@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ─── Editable model constant ───────────────────────────────────────────────────
+// If you get an inference-profile error, try the cross-region prefix variant:
+//   "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+const BEDROCK_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -14,41 +19,142 @@ interface UserProfile {
   topics: string[];
 }
 
-// Call Claude and return the generated text, or the fallback if anything goes wrong.
-async function callClaude(
-  apiKey: string,
+// ─── AWS Signature v4 helpers (Deno Web Crypto — no Node deps) ────────────────
+
+const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
+
+function hex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function sha256(data: string | Uint8Array): Promise<string> {
+  const input = typeof data === "string" ? enc(data) : data;
+  return hex(await crypto.subtle.digest("SHA-256", input));
+}
+
+async function hmacSha256(
+  key: ArrayBuffer | Uint8Array,
+  data: string,
+): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    key,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return crypto.subtle.sign("HMAC", cryptoKey, enc(data));
+}
+
+async function deriveSigningKey(
+  secretKey: string,
+  dateStamp: string,
+  region: string,
+  service: string,
+): Promise<ArrayBuffer> {
+  const kDate = await hmacSha256(enc(`AWS4${secretKey}`), dateStamp);
+  const kRegion = await hmacSha256(kDate, region);
+  const kService = await hmacSha256(kRegion, service);
+  return hmacSha256(kService, "aws4_request");
+}
+
+// ─── Bedrock invocation ────────────────────────────────────────────────────────
+
+async function callBedrockClaude(
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string,
   prompt: string,
   fallback: string,
-): Promise<string> {
+): Promise<{ text: string; usedClaude: boolean }> {
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    // The colon in the model ID must be percent-encoded in the path.
+    // encodeURIComponent encodes ':' → '%3A' but leaves '.' and '-' unchanged.
+    const modelPath = encodeURIComponent(BEDROCK_MODEL_ID);
+    const canonicalUri = `/model/${modelPath}/invoke`;
+    const host = `bedrock-runtime.${region}.amazonaws.com`;
+    const endpoint = `https://${host}${canonicalUri}`;
+
+    // Request body — model ID goes in the URL, NOT here
+    const requestBody = JSON.stringify({
+      anthropic_version: "bedrock-2023-05-31",
+      max_tokens: 200,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    // Timestamp: YYYYMMDDTHHMMSSZ
+    const now = new Date();
+    const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    const dateStamp = amzDate.slice(0, 8);
+
+    const payloadHash = await sha256(requestBody);
+
+    // Canonical headers — lowercase, sorted alphabetically, trailing newline on each
+    const canonicalHeaders =
+      `content-type:application/json\n` +
+      `host:${host}\n` +
+      `x-amz-date:${amzDate}\n`;
+    const signedHeaders = "content-type;host;x-amz-date";
+
+    const canonicalRequest = [
+      "POST",
+      canonicalUri,
+      "", // empty query string
+      canonicalHeaders,
+      signedHeaders,
+      payloadHash,
+    ].join("\n");
+
+    const credentialScope = `${dateStamp}/${region}/bedrock/aws4_request`;
+    const stringToSign = [
+      "AWS4-HMAC-SHA256",
+      amzDate,
+      credentialScope,
+      await sha256(canonicalRequest),
+    ].join("\n");
+
+    const signingKey = await deriveSigningKey(secretAccessKey, dateStamp, region, "bedrock");
+    const signature = hex(await hmacSha256(signingKey, stringToSign));
+
+    const authHeader =
+      `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope},` +
+      `SignedHeaders=${signedHeaders},` +
+      `Signature=${signature}`;
+
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        "Content-Type": "application/json",
+        "X-Amz-Date": amzDate,
+        "Authorization": authHeader,
       },
-      body: JSON.stringify({
-        model: "claude-3-5-haiku-20241022",
-        max_tokens: 200,
-        messages: [{ role: "user", content: prompt }],
-      }),
+      body: requestBody,
     });
 
     if (!res.ok) {
-      const body = await res.text();
-      console.error(`[story-summary] Claude ${res.status}:`, body);
-      return fallback;
+      const errBody = await res.text();
+      console.error(`[story-summary] Bedrock HTTP ${res.status} for model ${BEDROCK_MODEL_ID}:`, errBody);
+      return { text: fallback, usedClaude: false };
     }
 
     const data = await res.json();
     const text = (data?.content?.[0]?.text ?? "").trim();
-    return text || fallback;
+
+    if (!text) {
+      console.error("[story-summary] Bedrock returned empty content. Full response:", JSON.stringify(data));
+      return { text: fallback, usedClaude: false };
+    }
+
+    return { text, usedClaude: true };
   } catch (err) {
-    console.error("[story-summary] Claude fetch threw:", err);
-    return fallback;
+    console.error("[story-summary] Bedrock call threw:", err);
+    return { text: fallback, usedClaude: false };
   }
 }
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -57,7 +163,9 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY"); // may be absent — fallback handles it
+  const awsAccessKeyId = Deno.env.get("AWS_ACCESS_KEY_ID");
+  const awsSecretAccessKey = Deno.env.get("AWS_SECRET_ACCESS_KEY");
+  const awsRegion = Deno.env.get("AWS_REGION") ?? "us-west-2";
 
   const sb = createClient(supabaseUrl, serviceKey);
 
@@ -135,7 +243,7 @@ serve(async (req) => {
     const primaryTopic =
       shared[0] ?? elderTopics[0] ?? youngerTopics[0] ?? "Life & Experience";
 
-    // ── 5. Build hardcoded fallbacks (also used when Claude is absent) ────────
+    // ── 5. Build hardcoded fallbacks (used when Bedrock is absent or fails) ──
     const elderFallback =
       `${elder.name} shared their wisdom about ${topicLabel} — ` +
       `a conversation that honoured years of lived experience and the insight that only time can bring.`;
@@ -144,12 +252,12 @@ serve(async (req) => {
       `A meaningful conversation with ${elder.name} about ${topicLabel} ` +
       `offered new perspective and guidance for the journey ahead.`;
 
-    // ── 6. Generate summaries with Claude (parallel, with fallback) ───────────
+    // ── 6. Generate summaries via Bedrock (parallel, with fallback) ───────────
     let elderSummary = elderFallback;
     let youngerSummary = youngerFallback;
-    let usedClaude = false;
+    let usedClaude = false; // only true if Bedrock actually returned text
 
-    if (anthropicKey) {
+    if (awsAccessKeyId && awsSecretAccessKey) {
       const transcriptSection = transcript
         ? `\n\nTranscript excerpt:\n${transcript.slice(0, 3000)}`
         : "";
@@ -169,11 +277,17 @@ serve(async (req) => {
         `Frame it as guidance THEY received — a lesson for their journey. ` +
         `Be genuine and specific to the topic. Do not add quotation marks or a prefix like "Here is...".`;
 
-      [elderSummary, youngerSummary] = await Promise.all([
-        callClaude(anthropicKey, elderPrompt, elderFallback),
-        callClaude(anthropicKey, youngerPrompt, youngerFallback),
+      const [elderResult, youngerResult] = await Promise.all([
+        callBedrockClaude(awsAccessKeyId, awsSecretAccessKey, awsRegion, elderPrompt, elderFallback),
+        callBedrockClaude(awsAccessKeyId, awsSecretAccessKey, awsRegion, youngerPrompt, youngerFallback),
       ]);
-      usedClaude = true;
+
+      elderSummary = elderResult.text;
+      youngerSummary = youngerResult.text;
+      // usedClaude is true only if at least one call returned real generated text
+      usedClaude = elderResult.usedClaude || youngerResult.usedClaude;
+    } else {
+      console.error("[story-summary] AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY not set — using fallback.");
     }
 
     // ── 7. Insert two pending_approval posts ──────────────────────────────────
