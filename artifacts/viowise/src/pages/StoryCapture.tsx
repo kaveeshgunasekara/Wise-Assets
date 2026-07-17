@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AppNav from "@/components/AppNav";

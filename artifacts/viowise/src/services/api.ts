@@ -278,8 +278,9 @@ export async function getMyCallSummaryPost(userId: string): Promise<Post | null>
     .eq("status", "pending_approval")
     .order("created_at", { ascending: false })
     .limit(1)
-    .single();
-  if (error || !data) return null;
+    .maybeSingle(); // unlike .single(), never errors when 0 rows found
+  if (error) { console.error("[api] getMyCallSummaryPost:", error.message); return null; }
+  if (!data) return null;
   return toPost(data as DbPost);
 }
 
