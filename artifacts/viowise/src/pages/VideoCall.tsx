@@ -168,6 +168,13 @@ export default function VideoCall() {
 
   // ── End call ──────────────────────────────────────────────────────────────
   const handleEndCall = () => {
+    // DEBUG — remove after confirming Edge Function fires correctly
+    console.log("[handleEndCall] called", {
+      userId: user?.id ?? "NULL",
+      callPartnerId: callPartnerId ?? "NULL",
+      storyCaptureConsent,
+    });
+
     const frame = callFrameRef.current;
     if (frame) {
       frame.leave().then(() => frame.destroy()).catch(() => frame.destroy());
@@ -179,14 +186,25 @@ export default function VideoCall() {
       // Fire-and-forget: generate two pending-approval story summaries via
       // Claude. Only the user who explicitly ends the call triggers this so
       // we don't double-create posts when both sides disconnect at once.
-      // The existing pending_approval flow on the Wisdom Wall handles approval.
       if (storyCaptureConsent) {
+        const payload = { userA: user.id, userB: callPartnerId };
+        console.log("[handleEndCall] invoking generate-story-summary with payload:", payload);
         supabase.functions
-          .invoke("generate-story-summary", {
-            body: { userA: user.id, userB: callPartnerId },
+          .invoke("generate-story-summary", { body: payload })
+          .then((result) => {
+            console.log("[handleEndCall] generate-story-summary result:", result);
           })
-          .catch(() => {}); // non-blocking — never delay navigation
+          .catch((err) => {
+            console.error("[handleEndCall] generate-story-summary error:", err);
+          });
+      } else {
+        console.warn("[handleEndCall] storyCaptureConsent is FALSE — Edge Function NOT invoked. Summary will not be generated.");
       }
+    } else {
+      console.warn("[handleEndCall] user or callPartnerId is null — Edge Function NOT invoked.", {
+        user: user?.id,
+        callPartnerId,
+      });
     }
     setLocation(storyCaptureConsent ? "/story-capture" : "/wall");
   };

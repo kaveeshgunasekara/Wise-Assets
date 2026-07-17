@@ -61,7 +61,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pendingLanguages, setPendingLanguages] = useState<string[]>([]);
   const [subtitlesConsent, setSubtitlesConsent] = useState(true);
   const [storyCaptureConsent, setStoryCaptureConsent] = useState(true);
-  const [callPartnerId, setCallPartnerId] = useState<string | null>(null);
+
+  // callPartnerId must survive full page reloads (HMR invalidations, refreshes
+  // mid-call) so the Edge Function invocation in handleEndCall always has a
+  // non-null partner ID. sessionStorage clears when the tab closes.
+  const CALL_PARTNER_KEY = "viowise_call_partner_id";
+  const [callPartnerId, _setCallPartnerId] = useState<string | null>(
+    () => sessionStorage.getItem(CALL_PARTNER_KEY),
+  );
+  const setCallPartnerId = useCallback((id: string | null) => {
+    if (id) sessionStorage.setItem(CALL_PARTNER_KEY, id);
+    else sessionStorage.removeItem(CALL_PARTNER_KEY);
+    _setCallPartnerId(id);
+  }, []);
 
   // Load the users-table profile for a given auth UID and set it in context.
   // Retries once after 1 s in case the handle_new_user trigger hasn't committed
