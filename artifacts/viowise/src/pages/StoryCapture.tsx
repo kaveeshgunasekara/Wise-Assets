@@ -53,6 +53,13 @@ export default function StoryCapture() {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
 
+    // ── Diagnostic: dump sessionStorage state on mount ──────────────────────
+    console.log("[StoryCapture] mount — sessionStorage:", {
+      [SESSION_ID_KEY]: sessionStorage.getItem(SESSION_ID_KEY),
+      [CALL_ENDED_AT_KEY]: sessionStorage.getItem(CALL_ENDED_AT_KEY),
+      userId: user.id,
+    });
+
     // ── Phase 1: wait for callSessionId ─────────────────────────────────────
     let sessionWaitMs = 0;
     const SESSION_WAIT_LIMIT_MS = 10_000;
@@ -64,6 +71,7 @@ export default function StoryCapture() {
     const POST_POLL_INTERVAL_MS = 2000;
 
     const applyPost = (found: Post) => {
+      console.log("[StoryCapture] ✅ post found:", { id: found.id, status: found.status, authorConsented: found.authorConsented, callSessionId: found.callSessionId });
       setPost(found);
       setQuoteText(found.quote);
       setOriginalQuoteText(found.quote);
@@ -76,18 +84,22 @@ export default function StoryCapture() {
       queryFn: () => Promise<Post | null>,
     ) => {
       if (cancelled) return;
+      console.log(`[StoryCapture] poll attempt #${postAttempts + 1}/${MAX_POST_ATTEMPTS}`);
       try {
         const found = await queryFn();
         if (cancelled) return;
         if (found) { applyPost(found); return; }
-      } catch {
+        console.log(`[StoryCapture] attempt #${postAttempts + 1} — post not ready yet`);
+      } catch (err) {
+        console.error(`[StoryCapture] attempt #${postAttempts + 1} — query threw:`, err);
         if (cancelled) return;
       }
       if (postAttempts < MAX_POST_ATTEMPTS) {
         postAttempts++;
         timer = setTimeout(() => pollForPost(queryFn), POST_POLL_INTERVAL_MS);
       } else {
-        if (!cancelled) setLoadingPost(false); // gave up
+        console.warn("[StoryCapture] ❌ gave up after", MAX_POST_ATTEMPTS, "attempts — post never appeared");
+        if (!cancelled) setLoadingPost(false);
       }
     };
 
@@ -97,16 +109,16 @@ export default function StoryCapture() {
 
       if (sessionId) {
         // Exact query — ender path
-        console.log("[StoryCapture] using exact callSessionId:", sessionId);
+        console.log("[StoryCapture] Phase 2a — exact query, callSessionId:", sessionId);
         pollForPost(() => getMyCallSummaryPost(user.id, sessionId));
       } else if (callEndedAtStr) {
         // Timestamp fallback — partner path
         const callEndedAt = parseInt(callEndedAtStr, 10);
-        console.log("[StoryCapture] using timestamp fallback, callEndedAt:", new Date(callEndedAt).toISOString());
+        console.log("[StoryCapture] Phase 2b — timestamp fallback, callEndedAt:", new Date(callEndedAt).toISOString());
         pollForPost(() => getMyCallSummaryPostByTime(user.id, callEndedAt));
       } else {
         // No navigation context at all (e.g. direct URL visit)
-        console.warn("[StoryCapture] no callSessionId or callEndedAt in sessionStorage");
+        console.warn("[StoryCapture] ⚠️ no callSessionId or callEndedAt in sessionStorage — cannot query posts");
         setLoadingPost(false);
       }
     };
@@ -115,6 +127,7 @@ export default function StoryCapture() {
       if (cancelled) return;
       if (sessionStorage.getItem(SESSION_ID_KEY)) {
         // callSessionId arrived — switch to exact query
+        console.log("[StoryCapture] Phase 1 ✅ callSessionId arrived after", sessionWaitMs, "ms");
         startPostPolling();
         return;
       }
@@ -123,6 +136,7 @@ export default function StoryCapture() {
         timer = setTimeout(waitForSessionId, SESSION_POLL_INTERVAL_MS);
       } else {
         // 10 s elapsed, no callSessionId — use timestamp fallback
+        console.log("[StoryCapture] Phase 1 ⏱ 10 s elapsed, no callSessionId — falling back to timestamp");
         startPostPolling();
       }
     };
