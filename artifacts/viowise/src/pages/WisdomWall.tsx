@@ -332,99 +332,130 @@ export default function WisdomWall() {
 
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
-      <AppNav />
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
+      {/* ── Sticky control zone: AppNav + tabs + composer + filters ──────────── */}
+      <div className="sticky top-0 z-40 shadow-[0_2px_12px_rgba(83,64,155,0.08)]">
+        <AppNav />
 
-        {/* Tabs with sliding indicator */}
-        <div className="relative flex gap-0 border-b border-border mb-8 overflow-x-auto pb-px">
-          <div
-            className="absolute bottom-0 h-[3px] bg-primary rounded-t-full"
-            style={{
-              left: indicator.left,
-              width: indicator.width,
-              transition: "left 250ms ease, width 250ms ease",
-            }}
-            aria-hidden="true"
-          />
-          {TABS.map((t, i) => (
-            <button
-              key={t}
-              ref={(el) => { tabRefs.current[i] = el; }}
-              onClick={() => setTab(t)}
-              className={`px-4 py-3 text-[18px] font-medium whitespace-nowrap relative transition-colors duration-150 ${tab === t ? "text-primary" : "text-foreground/55 hover:text-foreground/80"}`}
-            >
-              {t}
-              {t === "Requests" && pendingRequestCount > 0 && (
-                <span className="ml-2 bg-primary text-white text-[13px] px-2 py-0.5 rounded-full">{pendingRequestCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
+        {/* White band beneath the nav bar holding tabs / composer / filters */}
+        <div className="bg-white border-b border-border">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
-        {/* Tab subtitle */}
-        {tab === "Wisdom" && (
-          <p className="text-foreground/50 text-[15px] mb-6 -mt-4">
-            Insights from {role === "learner" ? "mentors" : "learners"} matched to you.
-          </p>
-        )}
-        {tab === "Community" && (
-          <p className="text-foreground/50 text-[15px] mb-6 -mt-4">
-            The wider VIOWISE conversation.
-          </p>
-        )}
+            {/* Sub-tabs with sliding indicator */}
+            <div className="relative flex gap-0 border-b border-border overflow-x-auto pb-px">
+              <div
+                className="absolute bottom-0 h-[3px] bg-primary rounded-t-full pointer-events-none"
+                style={{
+                  left: indicator.left,
+                  width: indicator.width,
+                  transition: "left 250ms ease, width 250ms ease",
+                }}
+                aria-hidden="true"
+              />
+              {TABS.map((t, i) => (
+                <button
+                  key={t}
+                  ref={(el) => { tabRefs.current[i] = el; }}
+                  onClick={() => setTab(t)}
+                  className={`px-4 py-3 text-[18px] font-medium whitespace-nowrap relative transition-colors duration-150 ${tab === t ? "text-primary" : "text-foreground/55 hover:text-foreground/80"}`}
+                >
+                  {t}
+                  {t === "Requests" && pendingRequestCount > 0 && (
+                    <span className="ml-2 bg-primary text-white text-[13px] px-2 py-0.5 rounded-full">{pendingRequestCount}</span>
+                  )}
+                </button>
+              ))}
+            </div>
 
-        {/* Direct posting composer */}
-        {tab !== "Requests" && (
-          <div className="bg-white rounded-[18px] card-shadow mb-8 overflow-hidden">
-            {!composerOpen ? (
-              <button
-                onClick={() => setComposerOpen(true)}
-                className="w-full text-left px-6 py-4 text-[16px] text-foreground/55 hover:bg-secondary/50 transition-colors flex items-center gap-2"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-                {role === "mentor" ? "Share a piece of wisdom..." : "Share a reflection..."}
-              </button>
-            ) : (
-              <div className="p-6">
-                <textarea
-                  autoFocus
-                  value={composerQuote}
-                  onChange={(e) => setComposerQuote(e.target.value)}
-                  placeholder={role === "mentor" ? "What wisdom would you like to share?" : "What's on your mind?"}
-                  className="w-full p-4 rounded-xl border border-input bg-white font-serif italic text-[18px] leading-relaxed outline-none min-h-[120px]"
-                />
-                <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:items-center sm:justify-between">
-                  <select
-                    value={composerTopic}
-                    onChange={(e) => setComposerTopic(e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-input bg-white text-[16px] w-full sm:w-auto"
-                    aria-label="Post topic"
+            {/* Composer — shown for all tabs except Requests */}
+            {tab !== "Requests" && (
+              <div className="border-b border-border">
+                {!composerOpen ? (
+                  <button
+                    onClick={() => setComposerOpen(true)}
+                    className="w-full text-left py-3 text-[16px] text-foreground/55 hover:text-foreground/75 transition-colors flex items-center gap-2"
                   >
-                    {topics.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                  <div className="flex gap-3 justify-end">
-                    <button
-                      onClick={() => { setComposerOpen(false); setComposerQuote(""); }}
-                      className="btn-action px-4 py-2 border border-border rounded-lg font-medium hover:bg-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handlePostDirect}
-                      disabled={!composerQuote.trim() || posting}
-                      className="btn-action px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary-hover disabled:opacity-50"
-                    >
-                      {posting ? "Posting..." : "Post"}
-                    </button>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                    {role === "mentor" ? "Share a piece of wisdom..." : "Share a reflection..."}
+                  </button>
+                ) : (
+                  <div className="py-3">
+                    <textarea
+                      autoFocus
+                      value={composerQuote}
+                      onChange={(e) => setComposerQuote(e.target.value)}
+                      placeholder={role === "mentor" ? "What wisdom would you like to share?" : "What's on your mind?"}
+                      className="w-full p-3 rounded-xl border border-input bg-white font-serif italic text-[17px] leading-relaxed outline-none min-h-[88px] resize-none"
+                    />
+                    <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:items-center sm:justify-between">
+                      <select
+                        value={composerTopic}
+                        onChange={(e) => setComposerTopic(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg border border-input bg-white text-[15px] w-full sm:w-auto"
+                        aria-label="Post topic"
+                      >
+                        {topics.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => { setComposerOpen(false); setComposerQuote(""); }}
+                          className="btn-action px-4 py-1.5 border border-border rounded-lg text-[15px] font-medium hover:bg-secondary"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handlePostDirect}
+                          disabled={!composerQuote.trim() || posting}
+                          className="btn-action px-5 py-1.5 bg-primary text-white rounded-lg text-[15px] font-medium hover:bg-primary-hover disabled:opacity-50"
+                        >
+                          {posting ? "Posting..." : "Post"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Filters + search — shown for non-Requests tabs */}
+            {tab !== "Requests" && (
+              <div className="py-2.5 flex flex-col md:flex-row gap-2.5">
+                <div className="flex gap-2 overflow-x-auto pb-0.5 flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {topics.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setTopicFilter(topicFilter === t ? null : t)}
+                      aria-pressed={topicFilter === t}
+                      className={`btn-action px-3 py-1 rounded-full border text-[13px] font-medium tracking-wide whitespace-nowrap transition-colors shrink-0 ${topicFilter === t ? "bg-primary/10 border-primary text-primary" : "border-border bg-white text-foreground/60 hover:border-primary/50 hover:text-foreground/80"}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative w-full md:w-56 shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Search wisdom..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full h-9 rounded-[10px] border border-input pl-9 pr-3 bg-white text-[14px]"
+                    aria-label="Search wisdom"
+                  />
+                  <svg className="absolute left-2.5 top-2 text-foreground/40" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                  </svg>
                 </div>
               </div>
             )}
+
           </div>
-        )}
+        </div>
+      </div>{/* end sticky control zone */}
+
+      {/* ── Scrollable content: only posts / requests scroll beneath the zone ── */}
+      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-6">
 
         {loading ? (
           <WallSkeleton />
@@ -514,35 +545,6 @@ export default function WisdomWall() {
           </div>
         ) : (
           <>
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between mb-8">
-              <div className="flex gap-2 overflow-x-auto pb-2 flex-1">
-                {topics.map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setTopicFilter(topicFilter === t ? null : t)}
-                    aria-pressed={topicFilter === t}
-                    className={`btn-action px-3 py-1.5 rounded-full border text-[13px] font-medium tracking-wide whitespace-nowrap transition-colors ${topicFilter === t ? "bg-primary/10 border-primary text-primary" : "border-border bg-white text-foreground/60 hover:border-primary/50 hover:text-foreground/80"}`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-              <div className="relative w-full md:w-64 shrink-0">
-                <input
-                  type="text"
-                  placeholder="Search wisdom..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full px-4 h-[44px] rounded-[12px] border border-input pl-10 bg-white"
-                  aria-label="Search wisdom"
-                />
-                <svg className="absolute left-3 top-3 text-foreground/40" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-                </svg>
-              </div>
-            </div>
-
             {/* Stories Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredPosts.map((post, index) => {
