@@ -99,36 +99,51 @@ export default function Landing() {
           />
         )}
 
-        {/* Primary centre overlay — white-lavender radial gradient.
-            High opacity at the centre buries the iStock watermark;
-            fades to transparent at edges so the video remains visible
-            on the sides of the frame.                                  */}
+        {/* ── Overlay system: violet-tinted brand depth ────────────────────
+            Three layers compose into the final look:
+            1. Centre-lit lavender gradient — keeps hero text readable,
+               masks the iStock watermark, brightens mid-section.
+            2. Edge vignette — deeper brand violet at frame perimeter,
+               adds cinematic depth without darkening the text zone.
+            3. Watermark suppressor — tight ellipse over dead-centre.   */}
+
+        {/* Layer 1 — Centre-lit branded radial */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background: highContrast
               ? "rgba(240,237,248,0.97)"
-              : "radial-gradient(ellipse 70% 55% at 50% 52%, rgba(247,245,251,0.97) 0%, rgba(247,245,251,0.88) 25%, rgba(247,245,251,0.55) 60%, rgba(247,245,251,0.12) 100%)",
+              : "radial-gradient(ellipse 75% 60% at 50% 52%, rgba(237,232,247,0.86) 0%, rgba(220,215,240,0.65) 28%, rgba(180,165,220,0.28) 62%, transparent 100%)",
             pointerEvents: "none",
           }}
         />
 
-        {/* Secondary watermark-cover layer — a tighter, near-opaque ellipse
-            sitting directly over the centre where the watermark lives,
-            behind all text so nothing is obscured for the user.        */}
+        {/* Layer 2 — Edge vignette (brand violet, darker at corners) */}
         {!highContrast && (
           <div
             style={{
               position: "absolute",
               inset: 0,
-              background: "radial-gradient(ellipse 50% 35% at 50% 52%, rgba(247,245,251,0.96) 0%, rgba(247,245,251,0.70) 50%, transparent 100%)",
+              background: "radial-gradient(ellipse 100% 100% at 50% 50%, transparent 35%, rgba(83,64,155,0.18) 72%, rgba(83,64,155,0.34) 100%)",
               pointerEvents: "none",
             }}
           />
         )}
 
-        {/* Top scrim — keeps nav text readable */}
+        {/* Layer 3 — Watermark suppressor (tight, high-opacity centre ellipse) */}
+        {!highContrast && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "radial-gradient(ellipse 48% 32% at 50% 52%, rgba(237,232,247,0.90) 0%, rgba(220,215,240,0.58) 50%, transparent 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* Top scrim — violet-tinted so the nav area matches the brand depth */}
         {!highContrast && (
           <div
             style={{
@@ -137,7 +152,7 @@ export default function Landing() {
               left: 0,
               right: 0,
               height: "120px",
-              background: "linear-gradient(to bottom, rgba(247,245,251,0.72) 0%, rgba(247,245,251,0.30) 60%, rgba(247,245,251,0) 100%)",
+              background: "linear-gradient(to bottom, rgba(220,215,240,0.75) 0%, rgba(220,215,240,0.30) 60%, rgba(220,215,240,0) 100%)",
               pointerEvents: "none",
             }}
           />
