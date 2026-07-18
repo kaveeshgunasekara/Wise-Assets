@@ -22,6 +22,7 @@ import VideoCall from "@/pages/VideoCall";
 import StoryCapture from "@/pages/StoryCapture";
 import Help from "@/pages/Help";
 import NotFound from "@/pages/not-found";
+import VoiceNav from "@/components/VoiceNav";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ function App() {
         <AppProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
+            <VoiceNav />
           </WouterRouter>
           <Toaster />
         </AppProvider>

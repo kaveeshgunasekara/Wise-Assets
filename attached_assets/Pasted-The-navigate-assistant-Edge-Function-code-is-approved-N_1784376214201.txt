@@ -1,0 +1,21 @@
+The navigate-assistant Edge Function code is approved. Now build the complete voice assistant feature:
+
+1. CREATE the Edge Function file at supabase/functions/navigate-assistant/index.ts with the code we reviewed (the one reusing the generate-story-summary Bedrock/SigV4 setup, returning {"page","reply"}). I'll deploy it via the Supabase dashboard.
+
+2. BUILD a VoiceNav React component (voice-only, NO text input):
+   - Floating button fixed bottom-right on every page, VIOWISE pastel violet (#53409B) theme, a large friendly microphone icon (elderly-friendly tap target).
+   - Tap → opens a small panel and immediately starts listening via the Web Speech API (SpeechRecognition).
+   - Listening state: pulsing mic animation + large clear text "Listening… tell me where you'd like to go."
+   - On speech result: show "You said: [transcript]", POST { transcript } to the navigate-assistant Edge Function, show the returned reply, speak it aloud via SpeechSynthesis (TTS), then navigate to the mapped route.
+   - ROUTE MAP (verify each matches a REAL route in App.tsx — if any differ, use the correct actual path): matching→/matching, wisdom→/wall, profile→/profile, requests→/wall (open the Requests tab), help→/help, home→/. Before wiring, list the actual routes from App.tsx and confirm the map is correct so we never navigate to a 404.
+   - KEYWORD FALLBACK: if the Edge Function returns page:"unknown" or errors, do client-side keyword matching (mentor/learn/match/connect→matching, wisdom/stories/posts/read→wisdom, profile/photo/settings→profile, request/call→requests, help→help, home/back→home). If still unclear, show/speak "I didn't catch that — try saying 'find a mentor' or 'show wisdom'" with the mic ready to retry.
+   - GRACEFUL FAILURES (no text fallback exists, so these must be clear, never silent):
+     * mic permission denied → "I need microphone access to help you navigate. Please enable it in your browser settings."
+     * SpeechRecognition unsupported (Safari/Firefox) → "Voice works best in Chrome — please use Chrome for voice navigation."
+     * no speech / timeout → "I didn't hear anything — tap the mic to try again."
+     * Always show a retry (tap mic) — never a dead end.
+   - Accessible: large mic target, big clear text, respects the Accessibility text-size control, responsive on mobile + desktop.
+
+3. WIRE it into App.tsx globally (inside the router wrapper) so the floating button appears on every page.
+
+Show me: (a) the confirmed route map against App.tsx's actual routes, (b) then implement. Don't break existing pages.

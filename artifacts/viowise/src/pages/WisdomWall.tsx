@@ -22,7 +22,7 @@ import {
   logInteraction,
 } from "@/services/api";
 import type { Post, User, Match, CallRequest, RequestIntent } from "@/types";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 
 function WallSkeleton() {
   return (
@@ -207,7 +207,12 @@ function PendingCallSummaryFooter({
 export default function WisdomWall() {
   const { role, user, setCallPartnerId } = useApp();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState("Wisdom");
+  const urlSearch = useSearch();
+  const [tab, setTab] = useState(() => {
+    const params = new URLSearchParams(urlSearch.replace(/^\?/, ""));
+    const t = params.get("tab");
+    return (TABS as readonly string[]).includes(t ?? "") ? t! : "Wisdom";
+  });
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
 
