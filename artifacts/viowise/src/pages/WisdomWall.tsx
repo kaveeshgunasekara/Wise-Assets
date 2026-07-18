@@ -54,6 +54,148 @@ function WallSkeleton() {
 
 const TABS = ["Wisdom", "Community", "My posts", "Requests"] as const;
 
+// ── PendingCallSummaryFooter ───────────────────────────────────────────────
+// Each pending card gets its OWN instance of this component so selectedTopic
+// is truly local state — never shared across cards, never overwritten by
+// parent re-renders or polling effects.
+function PendingCallSummaryFooter({
+  post,
+  user,
+  pInfo,
+  editingPostId,
+  editingText,
+  myPostsWorking,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onShare,
+  onKeepPrivate,
+  onUnshare,
+}: {
+  post: Post;
+  user: User | null | undefined;
+  pInfo: { name: string | null; postExists: boolean } | undefined;
+  editingPostId: string | null;
+  editingText: string;
+  myPostsWorking: Record<string, boolean>;
+  onStartEdit: (postId: string) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: (postId: string) => void;
+  onShare: (postId: string, topic: string) => void;
+  onKeepPrivate: (postId: string) => void;
+  onUnshare: (post: Post) => void;
+}) {
+  const [selectedTopic, setSelectedTopic] = useState(post.topic);
+
+  return (
+    <div className="mt-auto border-t border-border pt-5">
+      {/* Author + partner context line */}
+      <div className="flex items-center gap-3 mb-4">
+        <AvatarImage user={user} className="w-8 h-8 text-base shrink-0" />
+        <div className="text-[13px] text-foreground/60">
+          {user?.name}{user?.age ? `, ${user.age}` : ""}
+          {pInfo?.name ? ` · with ${pInfo.name}` : ""}
+        </div>
+      </div>
+
+      {/* State 1: not yet shared */}
+      {!post.authorConsented && (
+        editingPostId === post.id ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onCancelEdit()}
+              className="flex-1 h-10 border border-border rounded-lg text-[14px] font-medium bg-white hover:bg-secondary transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onSaveEdit(post.id)}
+              disabled={myPostsWorking[post.id] || !editingText.trim()}
+              className="flex-1 h-10 bg-primary text-white rounded-lg text-[14px] font-medium hover:bg-primary-hover transition disabled:opacity-40"
+            >
+              {myPostsWorking[post.id] ? "Saving…" : "Save"}
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="text-[13px] text-foreground/50 mb-3">Not shared yet — only you can see this.</p>
+            <div className="mb-3">
+              <p className="text-[11px] font-medium text-foreground/45 uppercase tracking-[0.08em] mb-1.5">Topic</p>
+              <TopicPicker
+                value={selectedTopic}
+                onChange={(t) => {
+                  console.log("[TopicPicker] topic changed:", post.id, "→", t);
+                  setSelectedTopic(t);
+                }}
+                compact
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => onStartEdit(post.id)}
+                className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => {
+                  console.log("[Share] using topic:", selectedTopic);
+                  onShare(post.id, selectedTopic);
+                }}
+                disabled={myPostsWorking[post.id]}
+                className="h-9 px-4 bg-primary text-white rounded-lg text-[13px] font-medium hover:bg-primary-hover transition disabled:opacity-40"
+              >
+                {myPostsWorking[post.id] ? "Sharing…" : "Share to Wisdom Wall"}
+              </button>
+              <button
+                onClick={() => onKeepPrivate(post.id)}
+                disabled={myPostsWorking[post.id]}
+                className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
+              >
+                Keep private
+              </button>
+            </div>
+          </>
+        )
+      )}
+
+      {/* State 2: shared, waiting */}
+      {post.authorConsented && (
+        pInfo?.postExists === false ? (
+          <>
+            <p className="text-[13px] text-foreground/60 mb-3">
+              Your call partner chose to keep this private, so it won't be published. You can keep yours private too.
+            </p>
+            <button
+              onClick={() => onKeepPrivate(post.id)}
+              disabled={myPostsWorking[post.id]}
+              className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
+            >
+              {myPostsWorking[post.id] ? "Removing…" : "Keep private"}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 text-primary text-[13px] font-medium mb-3">
+              <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              Waiting for {pInfo?.name ?? "your call partner"} to share too…
+            </div>
+            <button
+              onClick={() => onUnshare(post)}
+              disabled={myPostsWorking[post.id]}
+              className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
+            >
+              {myPostsWorking[post.id] ? "Reverting…" : "Make private again"}
+            </button>
+          </>
+        )
+      )}
+    </div>
+  );
+}
+
 export default function WisdomWall() {
   const { role, user, setCallPartnerId } = useApp();
   const [, setLocation] = useLocation();
@@ -79,7 +221,6 @@ export default function WisdomWall() {
   // name null = couldn't load; postExists false = partner deleted their post
   const [partnerInfo, setPartnerInfo] = useState<Record<string, { name: string | null; postExists: boolean }>>({});
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
-  const [pendingTopics, setPendingTopics] = useState<Record<string, string>>({});
   const [editingText, setEditingText] = useState("");
   const [myPostsWorking, setMyPostsWorking] = useState<Record<string, boolean>>({});
 
@@ -220,21 +361,6 @@ export default function WisdomWall() {
   const authorOf = (post: Post) => users.find((u) => u.id === post.authorId);
 
   // ── My Posts call-summary handlers ─────────────────────────────────────────
-  // Seed pendingTopics with the DB topic for any pending call-summary that
-  // the user hasn't manually changed yet. Only fills gaps — never overwrites
-  // a topic the user has already chosen in this session.
-  useEffect(() => {
-    setPendingTopics((prev) => {
-      const next = { ...prev };
-      posts.forEach((p) => {
-        if (p.type === "call_summary" && p.status === "pending_approval" && p.authorId === user?.id) {
-          if (!(p.id in next)) next[p.id] = p.topic;
-        }
-      });
-      return next;
-    });
-  }, [posts, user?.id]);
-
   const handleMyPostsShare = async (postId: string, topic?: string) => {
     setMyPostsWorking((prev) => ({ ...prev, [postId]: true }));
     try {
@@ -624,108 +750,20 @@ export default function WisdomWall() {
 
                     {/* Footer: pending call_summary in My posts gets a special 3-state footer */}
                     {isMyPendingCallSummary ? (
-                      <div className="mt-auto border-t border-border pt-5">
-                        {/* Author + partner context line */}
-                        <div className="flex items-center gap-3 mb-4">
-                          <AvatarImage user={user} className="w-8 h-8 text-base shrink-0" />
-                          <div className="text-[13px] text-foreground/60">
-                            {user?.name}{user?.age ? `, ${user.age}` : ""}
-                            {pInfo?.name ? ` · with ${pInfo.name}` : ""}
-                          </div>
-                        </div>
-
-                        {/* State 1: not yet shared */}
-                        {!post.authorConsented && (
-                          editingPostId === post.id ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => { setEditingPostId(null); setEditingText(""); }}
-                                className="flex-1 h-10 border border-border rounded-lg text-[14px] font-medium bg-white hover:bg-secondary transition"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleMyPostsSaveEdit(post.id)}
-                                disabled={myPostsWorking[post.id] || !editingText.trim()}
-                                className="flex-1 h-10 bg-primary text-white rounded-lg text-[14px] font-medium hover:bg-primary-hover transition disabled:opacity-40"
-                              >
-                                {myPostsWorking[post.id] ? "Saving…" : "Save"}
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="text-[13px] text-foreground/50 mb-3">Not shared yet — only you can see this.</p>
-                              {/* Topic picker */}
-                              <div className="mb-3">
-                                <p className="text-[11px] font-medium text-foreground/45 uppercase tracking-[0.08em] mb-1.5">Topic</p>
-                                <TopicPicker
-                                  value={pendingTopics[post.id] ?? post.topic}
-                                  onChange={(t) => setPendingTopics((prev) => ({ ...prev, [post.id]: t }))}
-                                  compact
-                                />
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  onClick={() => { setEditingPostId(post.id); setEditingText(post.quote); }}
-                                  className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleMyPostsShare(post.id, pendingTopics[post.id])}
-                                  disabled={myPostsWorking[post.id]}
-                                  className="h-9 px-4 bg-primary text-white rounded-lg text-[13px] font-medium hover:bg-primary-hover transition disabled:opacity-40"
-                                >
-                                  {myPostsWorking[post.id] ? "Sharing…" : "Share to Wisdom Wall"}
-                                </button>
-                                <button
-                                  onClick={() => handleMyPostsKeepPrivate(post.id)}
-                                  disabled={myPostsWorking[post.id]}
-                                  className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
-                                >
-                                  Keep private
-                                </button>
-                              </div>
-                            </>
-                          )
-                        )}
-
-                        {/* State 2: shared, waiting */}
-                        {post.authorConsented && (
-                          pInfo?.postExists === false ? (
-                            /* Partner deleted their post — can never publish */
-                            <>
-                              <p className="text-[13px] text-foreground/60 mb-3">
-                                Your call partner chose to keep this private, so it won't be published. You can keep yours private too.
-                              </p>
-                              <button
-                                onClick={() => handleMyPostsKeepPrivate(post.id)}
-                                disabled={myPostsWorking[post.id]}
-                                className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
-                              >
-                                {myPostsWorking[post.id] ? "Removing…" : "Keep private"}
-                              </button>
-                            </>
-                          ) : (
-                            /* Waiting for partner to share */
-                            <>
-                              <div className="flex items-center gap-2 text-primary text-[13px] font-medium mb-3">
-                                <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                </svg>
-                                Waiting for {pInfo?.name ?? "your call partner"} to share too…
-                              </div>
-                              <button
-                                onClick={() => handleMyPostsUnshare(post)}
-                                disabled={myPostsWorking[post.id]}
-                                className="h-9 px-3 border border-border rounded-lg text-[13px] font-medium bg-white hover:bg-secondary transition disabled:opacity-40"
-                              >
-                                {myPostsWorking[post.id] ? "Reverting…" : "Make private again"}
-                              </button>
-                            </>
-                          )
-                        )}
-                      </div>
+                      <PendingCallSummaryFooter
+                        post={post}
+                        user={user}
+                        pInfo={pInfo}
+                        editingPostId={editingPostId}
+                        editingText={editingText}
+                        myPostsWorking={myPostsWorking}
+                        onStartEdit={(postId) => { setEditingPostId(postId); setEditingText(post.quote); }}
+                        onCancelEdit={() => { setEditingPostId(null); setEditingText(""); }}
+                        onSaveEdit={handleMyPostsSaveEdit}
+                        onShare={handleMyPostsShare}
+                        onKeepPrivate={handleMyPostsKeepPrivate}
+                        onUnshare={handleMyPostsUnshare}
+                      />
                     ) : (
                       /* Standard card footer */
                       <>

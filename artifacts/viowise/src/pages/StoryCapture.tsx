@@ -369,7 +369,13 @@ export default function StoryCapture() {
           {!loadingPost && post && shareState === "idle" && (
             <div className="mt-6 pt-5 border-t border-[#C5BCDF]/50">
               <p className="text-[14px] font-medium text-foreground/70 mb-3">Topic for this story</p>
-              <TopicPicker value={selectedTopic} onChange={setSelectedTopic} />
+              <TopicPicker
+                value={selectedTopic}
+                onChange={(t) => {
+                  console.log("[TopicPicker/StoryCapture] topic changed →", t);
+                  setSelectedTopic(t);
+                }}
+              />
             </div>
           )}
         </div>
