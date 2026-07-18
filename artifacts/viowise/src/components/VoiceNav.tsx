@@ -124,6 +124,24 @@ export default function VoiceNav() {
     async (transcript: string) => {
       setVoiceState({ kind: "processing", transcript });
 
+      // ── Sign-out is an ACTION, not a page — intercept before Claude ──────────
+      // Matching "sign out", "log out", "signout", "logout", "sign me out" etc.
+      // We must call supabase.auth.signOut() for real; navigating to "/" alone
+      // does NOT clear the session, so the button stays and "sign in" auto-logs
+      // back in without credentials.
+      if (/\b(sign.?out|log.?out|sign me out|log me out)\b/i.test(transcript)) {
+        const reply = "Signing you out now. Goodbye!";
+        setVoiceState({ kind: "result", transcript, reply });
+        speak(reply);
+        // Wait for the spoken reply to finish, then sign out.
+        // onAuthStateChange will set user→null, which hides VoiceNav automatically.
+        // RequireAuth on any protected page then redirects to /sign-in.
+        setTimeout(async () => {
+          await supabase.auth.signOut();
+        }, 1400);
+        return;
+      }
+
       let page: string | null = null;
       let reply = "";
 
