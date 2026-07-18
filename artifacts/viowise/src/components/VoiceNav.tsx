@@ -91,7 +91,7 @@ type VoiceState =
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function VoiceNav() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const [open, setOpen] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>({ kind: "idle" });
   const [, setLocation] = useLocation();
@@ -252,7 +252,7 @@ export default function VoiceNav() {
     };
   }, []);
 
-  if (!user) return null;
+  if (authLoading || !user) return null;
 
   return (
     <>
