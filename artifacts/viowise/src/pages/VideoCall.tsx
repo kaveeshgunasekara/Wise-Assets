@@ -57,6 +57,11 @@ export default function VideoCall() {
   const [showCaptions, setShowCaptions] = useState(subtitlesConsent);
   const [captionIndex, setCaptionIndex] = useState(0);
 
+  // ── Accessibility panel open state ────────────────────────────────────────
+  // When the panel is open, the Daily iframe container gets pointer-events-none
+  // so it can't swallow touch/click events that belong to our overlay.
+  const [accessibilityPanelOpen, setAccessibilityPanelOpen] = useState(false);
+
   // When the other participant leaves, show a message then auto-navigate after 2 s.
   useEffect(() => {
     if (!partnerLeft) return;
@@ -318,22 +323,27 @@ export default function VideoCall() {
       style={{ background: "linear-gradient(to bottom, #17141F, #1C1730)" }}
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="absolute top-0 w-full p-6 flex justify-between items-start z-20 bg-gradient-to-b from-[#17141F]/80 to-transparent pointer-events-none">
-        {/* ── Top-left: title, timer, then CC/Story pills below ───────────── */}
-        {/* Kept on the LEFT so nothing overlaps Daily's top-right Speaker/Grid controls */}
-        <div className="pointer-events-auto flex flex-col gap-1.5">
-          <h1 className="text-[20px] font-medium drop-shadow-md">
+      {/* p-4 on mobile → p-6 on desktop. Everything stays in the top dark-gradient
+          band so it never crosses into the centre video tile area. */}
+      <header className="absolute top-0 w-full p-4 sm:p-6 flex justify-between items-start z-20 bg-gradient-to-b from-[#17141F]/80 to-transparent pointer-events-none">
+
+        {/* ── Top-left: title + timer + CC/Story pills ────────────────── */}
+        {/* On mobile the title and pills are smaller so they use minimal height. */}
+        <div className="pointer-events-auto flex flex-col gap-1">
+          <h1 className="text-[15px] sm:text-[20px] font-medium drop-shadow-md leading-tight">
             {connecting ? "Connecting…" : `Call with ${partnerName}`}
           </h1>
           {!connecting && (
-            <div className="text-[18px] opacity-80 font-mono drop-shadow-md">{formatTime(timer)}</div>
+            <div className="text-[13px] sm:text-[18px] opacity-80 font-mono drop-shadow-md">
+              {formatTime(timer)}
+            </div>
           )}
-          {/* CC toggle + Story status — below title/timer, clear of Daily's video area */}
-          <div className="flex items-center gap-2 mt-1">
-            {/* CC toggle — turns the mock caption bar on/off (MOCK: no real transcription) */}
+          {/* CC toggle + Story status pill row */}
+          <div className="flex items-center gap-1.5 mt-1">
+            {/* CC toggle (MOCK: no real audio/transcription) */}
             <button
               onClick={() => setShowCaptions((v) => !v)}
-              className={`px-2.5 py-1 rounded-full text-[12px] font-semibold border transition-all ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-[12px] font-semibold border transition-all ${
                 showCaptions
                   ? "bg-white/20 border-white/30 text-white"
                   : "bg-black/50 border-white/10 text-white/50"
@@ -343,15 +353,15 @@ export default function VideoCall() {
             >
               CC {showCaptions ? "On" : "Off"}
             </button>
-            {/* Story capture status (read-only indicator) */}
+            {/* Story capture status (read-only) */}
             <div
-              className={`px-2.5 py-1 border rounded-full text-[12px] font-medium flex items-center gap-1 ${
+              className={`px-2 py-0.5 sm:px-2.5 sm:py-1 border rounded-full text-[11px] sm:text-[12px] font-medium flex items-center gap-1 ${
                 storyCaptureConsent
                   ? "bg-[#A594E8]/15 border-[#A594E8]/35 text-[#A594E8]"
                   : "bg-black/50 border-white/10 text-white/40"
               }`}
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
               </svg>
               {storyCaptureConsent ? "Story on" : "Story off"}
@@ -359,14 +369,20 @@ export default function VideoCall() {
           </div>
         </div>
 
-        {/* ── Top-right: Accessibility control only — its own corner, nothing else ── */}
-        <div className="pointer-events-auto">
-          <AccessibilityControl />
+        {/* ── Top-right: Accessibility control ────────────────────────── */}
+        {/* z-[60] wrapper raises both the button AND its dropdown above the Daily
+            iframe (z-0). The onOpenChange callback disables pointer events on the
+            iframe container while the panel is open, preventing click-capture. */}
+        <div className="pointer-events-auto relative z-[60]">
+          <AccessibilityControl onOpenChange={setAccessibilityPanelOpen} />
         </div>
+
       </header>
 
       {/* ── Main: Daily.co embedded call ───────────────────────────────── */}
-      <div ref={callContainerRef} className="absolute inset-0 z-0">
+      {/* pointer-events-none while the Accessibility panel is open so the iframe
+          can't swallow tap events that belong to the overlay panel above it. */}
+      <div ref={callContainerRef} className={`absolute inset-0 z-0${accessibilityPanelOpen ? " pointer-events-none" : ""}`}>
         {/* Connecting state */}
         {connecting && !callError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#17141F]">
@@ -398,16 +414,16 @@ export default function VideoCall() {
            MOCK_CAPTIONS every 4.5 s. Hidden when showCaptions is false.      ── */}
       {!connecting && !callError && showCaptions && (
         <div
-          className="absolute bottom-28 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-20 pointer-events-none"
+          className="absolute bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 w-full max-w-xs sm:max-w-2xl px-3 sm:px-6 z-20 pointer-events-none"
           aria-live="polite"
           aria-label="Live captions"
         >
-          {/* Sits in the dark footer-gradient band, below the video tiles, above the End call button */}
-          <div className="bg-black/60 backdrop-blur-md rounded-[12px] px-5 py-2.5 text-center">
-            <span className="text-white/55 text-[13px] font-semibold tracking-wide mr-1.5">
+          {/* Dark footer-gradient band — below video tiles, above End call button */}
+          <div className="bg-black/60 backdrop-blur-md rounded-[10px] sm:rounded-[12px] px-3 sm:px-5 py-2 sm:py-2.5 text-center">
+            <span className="text-white/55 text-[11px] sm:text-[13px] font-semibold tracking-wide mr-1">
               {MOCK_CAPTIONS[captionIndex].speaker}:
             </span>
-            <span className="text-white text-[15px] leading-snug">
+            <span className="text-white text-[13px] sm:text-[15px] leading-snug">
               {MOCK_CAPTIONS[captionIndex].text}
             </span>
           </div>
