@@ -40,6 +40,14 @@ declare global {
   }
 }
 
+// ── Browser capability detection (module-level, client only) ─────────────────
+// iOS = Safari + ALL iOS browsers (Chrome/Firefox on iOS use WKWebView, no SpeechRecognition)
+const isIOS =
+  typeof navigator !== "undefined" &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    // iPadOS 13+ reports as MacIntel with touch
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
 // ── Page → route map (every route verified against App.tsx) ──────────────────
 const PAGE_ROUTES: Record<string, string> = {
   matching:  "/matching",
@@ -174,11 +182,12 @@ export default function VoiceNav() {
   // ── Start SpeechRecognition ───────────────────────────────────────────────
   const startListening = useCallback(() => {
     if (!SpeechRecognitionClass) {
-      setVoiceState({
-        kind: "error",
-        message: "Voice works best in Chrome — please use Chrome for voice navigation.",
-        canRetry: false,
-      });
+      // iOS: every browser (Safari, Chrome, Firefox) uses WKWebView — no SpeechRecognition API
+      // macOS Safari, Firefox desktop: also unsupported
+      const msg = isIOS
+        ? "Voice navigation isn't available on iPhone or iPad — Apple doesn't support it in any iOS browser. Please use a desktop browser or Android Chrome."
+        : "Voice navigation requires Chrome on desktop or Android. Please open this page in Chrome.";
+      setVoiceState({ kind: "error", message: msg, canRetry: false });
       return;
     }
 
@@ -248,10 +257,13 @@ export default function VoiceNav() {
   }, [SpeechRecognitionClass, processTranscript]);
 
   // ── Open panel + start listening immediately ──────────────────────────────
+  // IMPORTANT: startListening() must be called synchronously here (no setTimeout)
+  // so that rec.start() executes within the user-gesture call stack.
+  // Mobile browsers (Android Chrome) block mic access if start() is called after
+  // an async gap, even a 120ms one.
   const handleOpen = useCallback(() => {
     setOpen(true);
-    setVoiceState({ kind: "idle" });
-    setTimeout(() => startListening(), 120);
+    startListening();
   }, [startListening]);
 
   // ── Close panel + cleanup ─────────────────────────────────────────────────
@@ -275,12 +287,15 @@ export default function VoiceNav() {
   return (
     <>
       {/* Floating mic button — always visible when panel is closed */}
+      {/* bottom uses env(safe-area-inset-bottom) so the button clears iOS Safari's
+          toolbar and the home indicator on notched iPhones */}
       {!open && (
         <button
           onClick={handleOpen}
           aria-label="Voice navigation — tap to speak"
           title="Voice navigation"
-          className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full bg-primary text-white shadow-[0_4px_24px_rgba(83,64,155,0.45)] hover:bg-primary-hover active:scale-95 transition-all flex items-center justify-center"
+          className="fixed right-5 z-50 w-16 h-16 rounded-full bg-primary text-white shadow-[0_4px_24px_rgba(83,64,155,0.45)] hover:bg-primary-hover active:scale-95 transition-all flex items-center justify-center"
+          style={{ bottom: "max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
         >
           <MicIcon size={28} />
         </button>
@@ -289,11 +304,16 @@ export default function VoiceNav() {
       {/* Voice assistant panel */}
       {open && (
         <div
-          className="fixed bottom-6 right-6 z-50 bg-white rounded-[24px] shadow-[0_8px_48px_rgba(83,64,155,0.20)] border border-primary/10 overflow-hidden"
-          style={{ width: "min(340px, calc(100vw - 24px))" }}
+          className="fixed right-3 z-50 bg-white rounded-[24px] shadow-[0_8px_48px_rgba(83,64,155,0.20)] border border-primary/10 overflow-hidden flex flex-col"
+          style={{
+            width: "min(340px, calc(100vw - 24px))",
+            bottom: "max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))",
+            // Never taller than viewport minus AppNav header (~64px) and some breathing room
+            maxHeight: "calc(100dvh - 100px)",
+          }}
         >
           {/* Header bar */}
-          <div className="bg-primary px-5 py-4 flex items-center justify-between">
+          <div className="bg-primary px-5 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
               <span className="text-white opacity-90"><MicIcon size={20} /></span>
               <span className="text-white font-semibold text-[17px]">Voice Assistant</span>
@@ -309,8 +329,8 @@ export default function VoiceNav() {
             </button>
           </div>
 
-          {/* State body */}
-          <div className="px-5 py-7 min-h-[164px] flex flex-col items-center justify-center text-center gap-4">
+          {/* State body — scrollable if content overflows on very short screens */}
+          <div className="px-5 py-7 min-h-[164px] flex flex-col items-center justify-center text-center gap-4 overflow-y-auto">
             <VoiceStateDisplay state={voiceState} onRetry={startListening} />
           </div>
         </div>
