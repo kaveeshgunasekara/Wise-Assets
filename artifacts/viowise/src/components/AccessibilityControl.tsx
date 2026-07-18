@@ -37,7 +37,7 @@ export default function AccessibilityControl({ onOpenChange }: Props) {
             onClick={() => toggle(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-border shadow-lg rounded-xl p-4 z-[60]">
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-border shadow-lg rounded-xl p-4 z-[60] text-foreground">
             <h3 className="font-semibold text-[16px] mb-3">Text size</h3>
             <div className="flex flex-col gap-2 mb-4">
               {["Standard", "Large", "Extra large"].map((size) => (
