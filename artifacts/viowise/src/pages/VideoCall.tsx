@@ -8,6 +8,22 @@ import type { User } from "@/types";
 import type { DailyCall } from "@daily-co/daily-js";
 import DailyIframe from "@daily-co/daily-js";
 
+// ── MOCK caption lines ─────────────────────────────────────────────────────
+// These rotate every ~4.5 s to simulate live subtitles in the demo.
+// There is NO real audio processing or transcription — this is visual only.
+const MOCK_CAPTIONS = [
+  { speaker: "Sam",  text: "That's a really thoughtful question." },
+  { speaker: "Alex", text: "In my experience, the most important thing is to stay curious." },
+  { speaker: "Sam",  text: "I never thought about it that way before." },
+  { speaker: "Alex", text: "When I was your age, I made a lot of mistakes — and that's okay." },
+  { speaker: "Sam",  text: "So how did you handle the uncertainty?" },
+  { speaker: "Alex", text: "You have to trust the process, even when it's uncomfortable." },
+  { speaker: "Sam",  text: "That really resonates with me. Thank you." },
+  { speaker: "Alex", text: "The best advice I ever got was to listen more than you speak." },
+  { speaker: "Sam",  text: "I wish someone had told me that earlier." },
+  { speaker: "Alex", text: "It's never too late — that's the beauty of these connections." },
+];
+
 export default function VideoCall() {
   const { user, subtitlesConsent, storyCaptureConsent, callPartnerId } = useApp();
   const [, setLocation] = useLocation();
@@ -35,6 +51,11 @@ export default function VideoCall() {
   const [connecting, setConnecting] = useState(true);
   const [callError, setCallError] = useState<string | null>(null);
   const [partnerLeft, setPartnerLeft] = useState(false);
+
+  // ── Mock CC captions (visual only — no real transcription) ────────────────
+  // Initial state mirrors the user's subtitlesConsent choice from pre-call.
+  const [showCaptions, setShowCaptions] = useState(subtitlesConsent);
+  const [captionIndex, setCaptionIndex] = useState(0);
 
   // When the other participant leaves, show a message then auto-navigate after 2 s.
   useEffect(() => {
@@ -198,6 +219,15 @@ export default function VideoCall() {
     return () => clearInterval(interval);
   }, [connecting]);
 
+  // ── Mock caption cycling (visual only — no real audio/transcription) ──────
+  useEffect(() => {
+    if (connecting || !showCaptions) return;
+    const id = setInterval(() => {
+      setCaptionIndex((i) => (i + 1) % MOCK_CAPTIONS.length);
+    }, 4500);
+    return () => clearInterval(id);
+  }, [connecting, showCaptions]);
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -297,27 +327,45 @@ export default function VideoCall() {
             <div className="text-[18px] opacity-80 font-mono mt-1 drop-shadow-md">{formatTime(timer)}</div>
           )}
         </div>
+        {/* ── Top-right status indicators — clean two-row layout, no overlap ── */}
         <div className="flex flex-col items-end gap-2 pointer-events-auto">
-          <div
-            className={`px-3 py-1.5 rounded-full text-base font-medium border ${
-              subtitlesConsent ? "bg-white/20 border-white/30" : "bg-black/40 border-white/10"
-            }`}
-          >
-            Live subtitles: {subtitlesConsent ? "On" : "Off"}
+
+          {/* Row 1: CC toggle + Story capture pill side-by-side */}
+          <div className="flex items-center gap-2">
+
+            {/* CC toggle — turns the mock caption bar on/off */}
+            <button
+              onClick={() => setShowCaptions((v) => !v)}
+              className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                showCaptions
+                  ? "bg-white/20 border-white/30 text-white"
+                  : "bg-black/40 border-white/10 text-white/50"
+              }`}
+              aria-pressed={showCaptions}
+              title="Toggle live captions"
+            >
+              CC {showCaptions ? "On" : "Off"}
+            </button>
+
+            {/* Story capture status (read-only) */}
+            <div
+              className={`px-3 py-1.5 border rounded-full text-[13px] font-medium flex items-center gap-1.5 ${
+                storyCaptureConsent
+                  ? "bg-[#A594E8]/20 border-[#A594E8]/40 text-[#A594E8]"
+                  : "bg-black/40 border-white/10 text-white/50"
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+              </svg>
+              {storyCaptureConsent ? "Story on" : "Story off"}
+            </div>
+
           </div>
-          <div
-            className={`px-3 py-1.5 border rounded-full text-base font-medium flex items-center gap-1.5 ${
-              storyCaptureConsent
-                ? "bg-[#A594E8]/20 border-[#A594E8]/40 text-[#A594E8]"
-                : "bg-black/40 border-white/10 text-white/70"
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-            </svg>
-            Story capture {storyCaptureConsent ? "on" : "off"}
-          </div>
+
+          {/* Row 2: Accessibility control — own row so it never overlaps the pills */}
           <AccessibilityControl />
+
         </div>
       </header>
 
@@ -348,6 +396,26 @@ export default function VideoCall() {
           </div>
         )}
       </div>
+
+      {/* ── MOCK live-subtitle caption bar (visual only — no real transcription) ─
+           Positioned bottom-center above the call controls. Cycles through
+           MOCK_CAPTIONS every 4.5 s. Hidden when showCaptions is false.      ── */}
+      {!connecting && !callError && showCaptions && (
+        <div
+          className="absolute bottom-36 sm:bottom-40 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 z-20 pointer-events-none"
+          aria-live="polite"
+          aria-label="Live captions"
+        >
+          <div className="bg-black/70 backdrop-blur-md rounded-[14px] px-5 py-3 text-center">
+            <span className="text-white/55 text-[13px] font-semibold tracking-wide mr-1.5">
+              {MOCK_CAPTIONS[captionIndex].speaker}:
+            </span>
+            <span className="text-white text-[15px] leading-snug">
+              {MOCK_CAPTIONS[captionIndex].text}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ── Partner-left banner ─────────────────────────────────────────── */}
       {partnerLeft && (

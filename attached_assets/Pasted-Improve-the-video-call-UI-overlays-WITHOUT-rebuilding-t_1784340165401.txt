@@ -1,0 +1,22 @@
+Improve the video call UI overlays WITHOUT rebuilding the call (keep the working Daily prebuilt iframe — do NOT switch to callObject). Two goals: (1) add a clean MOCK live-subtitle bar, (2) tidy the cluttered overlapping overlays in the top-right.
+
+DO NOT touch the Daily frame creation, join logic, handleEndCall, or the frameCreatingRef guard — the call works and must keep working. Only change the overlay UI layered on top.
+
+1. MOCK LIVE SUBTITLES (visual only — no real transcription):
+   - Add a caption bar at the BOTTOM-CENTER of the video area (where subtitles normally go), above the call controls.
+   - Show sample conversation lines that update every ~4-5 seconds to look live, e.g. cycling through realistic lines like:
+     "That's a really thoughtful question..." / "In my experience, the most important thing is..." / "I never thought about it that way before." etc. (a rotating array of sample mentor/learner lines, alternating speaker labels).
+   - Style: semi-transparent dark rounded bar, white text, readable, centered, max-width so it doesn't span the whole screen. Small speaker label (e.g. "Sam:").
+   - A CC toggle button (like the existing "Live subtitles: On") turns the caption bar on/off. When off, hide the bar but keep the toggle.
+   - Make clear in code comments this is a MOCK (no real audio/transcription).
+
+2. TIDY THE OVERLAPPING OVERLAYS:
+   - Currently "Live subtitles: On", "Story capture on", and the Accessibility control overlap each other and the video in the top-right (looks cluttered).
+   - Arrange them cleanly: group the call-status indicators (Live subtitles toggle, Story capture status) in a neat vertical or horizontal row with proper spacing, not overlapping. 
+   - Ensure the Accessibility control doesn't overlap them.
+   - Proper z-index and spacing so nothing sits on top of anything else.
+   - Keep it consistent with the VIOWISE pastel violet theme.
+
+3. Responsive: works on desktop and mobile (caption bar and toggles reposition sensibly on small screens).
+
+Keep everything else about the call identical. Show me the plan, then implement. Test that the call still joins and works after.
