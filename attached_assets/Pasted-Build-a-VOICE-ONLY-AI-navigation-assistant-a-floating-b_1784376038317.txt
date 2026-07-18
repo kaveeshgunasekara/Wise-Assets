@@ -1,0 +1,24 @@
+Build a VOICE-ONLY AI navigation assistant — a floating button on every page. User taps it, speaks a request, and it navigates to the right page using Claude (via our existing AWS Bedrock setup) with a keyword fallback. NO text input — voice only.
+
+PART 1 — EDGE FUNCTION (navigate-assistant):
+- Create a Supabase Edge Function that receives a text string (the speech transcript).
+- Call Claude via AWS Bedrock reusing the EXACT SigV4 signing + Bedrock setup from generate-story-summary (same AWS_ACCESS_KEY_ID/SECRET/REGION secrets, same model us.anthropic.claude-haiku-4-5-20251001-v1:0).
+- Prompt Claude to return ONLY JSON: {"page":"<one of: matching, wisdom, profile, requests, help, home>", "reply":"<short friendly spoken confirmation>"}. Constrain strictly to those page values.
+- Example: "find someone older to talk to about my career" → {"page":"matching","reply":"Taking you to AI Matching to find a mentor."}
+- If Claude errors or returns an invalid page, return {"page":"unknown"}.
+
+PART 2 — FRONTEND (voice-only):
+- Floating button bottom-right on every page (global layout), VIOWISE pastel violet theme, a friendly microphone icon.
+- Tap → opens a small panel and immediately starts listening (Web Speech API / SpeechRecognition).
+- Show clear listening state: a pulsing mic animation + "Listening… tell me where you'd like to go."
+- On result: show the transcript ("You said: …"), send it to navigate-assistant, show the reply, then navigate to the mapped route (matching→/matching, wisdom→/wall, profile→/profile, requests→/wall requests tab, help→/help, home→/).
+- KEYWORD FALLBACK: if the Edge Function returns "unknown"/errors, do client-side keyword matching (mentor/learn/match→matching, wisdom/stories/posts→wisdom, profile/photo→profile, request→requests, help→help). If still unclear, SPEAK/show "I didn't catch that — try saying 'find a mentor' or 'show wisdom'" and let them tap the mic to retry.
+- GRACEFUL VOICE FAILURES (important since there's no text fallback): 
+   * If mic permission denied → clear message "I need microphone access to help you navigate. Please enable it in your browser."
+   * If SpeechRecognition unsupported (e.g. Safari) → clear message "Voice isn't supported in this browser — please use Chrome."
+   * If no speech detected / timeout → "I didn't hear anything — tap the mic to try again."
+   * Never fail silently — always show a clear next step and a retry button (the mic).
+- Optional nice touch: speak the reply aloud using SpeechSynthesis (text-to-speech) so it feels like a real assistant.
+- Accessible: large mic target, clear big text (elderly-user mission), respects the Accessibility text-size control. Responsive.
+
+Show me the plan + the Edge Function code before deploying (I'll verify the Bedrock reuse).
