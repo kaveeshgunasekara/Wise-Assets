@@ -319,53 +319,49 @@ export default function VideoCall() {
     >
       {/* ── Header ────────────────────────────────────────────────────── */}
       <header className="absolute top-0 w-full p-6 flex justify-between items-start z-20 bg-gradient-to-b from-[#17141F]/80 to-transparent pointer-events-none">
-        <div className="pointer-events-auto">
+        {/* ── Top-left: title, timer, then CC/Story pills below ───────────── */}
+        {/* Kept on the LEFT so nothing overlaps Daily's top-right Speaker/Grid controls */}
+        <div className="pointer-events-auto flex flex-col gap-1.5">
           <h1 className="text-[20px] font-medium drop-shadow-md">
             {connecting ? "Connecting…" : `Call with ${partnerName}`}
           </h1>
           {!connecting && (
-            <div className="text-[18px] opacity-80 font-mono mt-1 drop-shadow-md">{formatTime(timer)}</div>
+            <div className="text-[18px] opacity-80 font-mono drop-shadow-md">{formatTime(timer)}</div>
           )}
-        </div>
-        {/* ── Top-right status indicators — clean two-row layout, no overlap ── */}
-        <div className="flex flex-col items-end gap-2 pointer-events-auto">
-
-          {/* Row 1: CC toggle + Story capture pill side-by-side */}
-          <div className="flex items-center gap-2">
-
-            {/* CC toggle — turns the mock caption bar on/off */}
+          {/* CC toggle + Story status — below title/timer, clear of Daily's video area */}
+          <div className="flex items-center gap-2 mt-1">
+            {/* CC toggle — turns the mock caption bar on/off (MOCK: no real transcription) */}
             <button
               onClick={() => setShowCaptions((v) => !v)}
-              className={`px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+              className={`px-2.5 py-1 rounded-full text-[12px] font-semibold border transition-all ${
                 showCaptions
                   ? "bg-white/20 border-white/30 text-white"
-                  : "bg-black/40 border-white/10 text-white/50"
+                  : "bg-black/50 border-white/10 text-white/50"
               }`}
               aria-pressed={showCaptions}
               title="Toggle live captions"
             >
               CC {showCaptions ? "On" : "Off"}
             </button>
-
-            {/* Story capture status (read-only) */}
+            {/* Story capture status (read-only indicator) */}
             <div
-              className={`px-3 py-1.5 border rounded-full text-[13px] font-medium flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 border rounded-full text-[12px] font-medium flex items-center gap-1 ${
                 storyCaptureConsent
-                  ? "bg-[#A594E8]/20 border-[#A594E8]/40 text-[#A594E8]"
-                  : "bg-black/40 border-white/10 text-white/50"
+                  ? "bg-[#A594E8]/15 border-[#A594E8]/35 text-[#A594E8]"
+                  : "bg-black/50 border-white/10 text-white/40"
               }`}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
               </svg>
               {storyCaptureConsent ? "Story on" : "Story off"}
             </div>
-
           </div>
+        </div>
 
-          {/* Row 2: Accessibility control — own row so it never overlaps the pills */}
+        {/* ── Top-right: Accessibility control only — its own corner, nothing else ── */}
+        <div className="pointer-events-auto">
           <AccessibilityControl />
-
         </div>
       </header>
 
@@ -402,11 +398,12 @@ export default function VideoCall() {
            MOCK_CAPTIONS every 4.5 s. Hidden when showCaptions is false.      ── */}
       {!connecting && !callError && showCaptions && (
         <div
-          className="absolute bottom-36 sm:bottom-40 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 z-20 pointer-events-none"
+          className="absolute bottom-28 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-20 pointer-events-none"
           aria-live="polite"
           aria-label="Live captions"
         >
-          <div className="bg-black/70 backdrop-blur-md rounded-[14px] px-5 py-3 text-center">
+          {/* Sits in the dark footer-gradient band, below the video tiles, above the End call button */}
+          <div className="bg-black/60 backdrop-blur-md rounded-[12px] px-5 py-2.5 text-center">
             <span className="text-white/55 text-[13px] font-semibold tracking-wide mr-1.5">
               {MOCK_CAPTIONS[captionIndex].speaker}:
             </span>
