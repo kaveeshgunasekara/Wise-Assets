@@ -299,7 +299,7 @@ export default function WisdomWall() {
       logInteraction({ userId: user!.id, eventType: "accepted", targetId: req.fromId }).catch(() => {});
       await refreshRequests();
       setCallPartnerId(req.fromId);
-      setLocation("/pre-call");
+      setLocation("/schedule");
     } else {
       setRequestActionMsg((prev) => ({ ...prev, [req.id]: "Request declined" }));
       await refreshRequests();
@@ -520,7 +520,7 @@ export default function WisdomWall() {
                             Accepted
                           </span>
                           <button
-                            onClick={() => { setCallPartnerId(req.toId); setLocation("/pre-call"); }}
+                            onClick={() => { setCallPartnerId(req.toId); setLocation("/schedule"); }}
                             className="btn-action px-6 py-3 bg-primary text-white rounded-[12px] font-medium text-[16px] hover:bg-primary-hover"
                           >
                             Join call

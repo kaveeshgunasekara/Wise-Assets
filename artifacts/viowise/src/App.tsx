@@ -16,6 +16,7 @@ import SignIn from "@/pages/SignIn";
 import WisdomWall from "@/pages/WisdomWall";
 import Profile from "@/pages/Profile";
 import AIMatching from "@/pages/AIMatching";
+import ScheduleCall from "@/pages/ScheduleCall";
 import PreCallConsent from "@/pages/PreCallConsent";
 import VideoCall from "@/pages/VideoCall";
 import StoryCapture from "@/pages/StoryCapture";
@@ -54,6 +55,9 @@ function Router() {
       </Route>
       <Route path="/matching">
         <RequireAuth component={AIMatching} />
+      </Route>
+      <Route path="/schedule">
+        <RequireAuth component={ScheduleCall} />
       </Route>
       <Route path="/pre-call">
         <RequireAuth component={PreCallConsent} />
