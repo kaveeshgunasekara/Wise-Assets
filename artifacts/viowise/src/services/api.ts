@@ -330,6 +330,25 @@ export async function getMyCallSummaryPostByTime(
   return data ? toPost(data as DbPost) : null;
 }
 
+// Last-resort fallback: find this user's most recently created pending call_summary
+// post, with no dependency on callSessionId or timestamp. Used when the Edge Function
+// returns a null callSessionId (e.g. call_sessions insert failed) AND the timestamp
+// fallback also comes up empty. "pending_approval" ensures we don't surface a
+// published post from an older call.
+export async function getLatestPendingCallSummaryPost(userId: string): Promise<Post | null> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("author_id", userId)
+    .eq("type", "call_summary")
+    .eq("status", "pending_approval")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) { console.error("[api] getLatestPendingCallSummaryPost:", error.message); return null; }
+  return data ? toPost(data as DbPost) : null;
+}
+
 // Fetch a single post by ID regardless of status (used to poll for dual-consent promotion).
 export async function getPostById(postId: string): Promise<Post | null> {
   const { data, error } = await supabase

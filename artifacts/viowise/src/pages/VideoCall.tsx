@@ -28,6 +28,10 @@ export default function VideoCall() {
   // ── Daily.co state ────────────────────────────────────────────────────────
   const callContainerRef = useRef<HTMLDivElement>(null);
   const callFrameRef = useRef<DailyCall | null>(null);
+  // True from the moment frame creation STARTS until cleanup resets it.
+  // Checked before callFrameRef so a re-run after handleEndCall (which nulls
+  // callFrameRef) still bails — prevents the postMessage null crash.
+  const frameCreatingRef = useRef(false);
   const [connecting, setConnecting] = useState(true);
   const [callError, setCallError] = useState<string | null>(null);
   const [partnerLeft, setPartnerLeft] = useState(false);
@@ -57,8 +61,11 @@ export default function VideoCall() {
   useEffect(() => {
     if (!user || !callPartnerId) return;
 
-    // Guard: if a frame was somehow left behind, don't create a second one.
-    if (callFrameRef.current) return;
+    // Dual guard: frameCreatingRef stays true from creation-start until cleanup
+    // resets it, so even if handleEndCall nulls callFrameRef before unmount,
+    // a stale re-run still bails before calling DailyIframe.createFrame again.
+    if (frameCreatingRef.current || callFrameRef.current) return;
+    frameCreatingRef.current = true;
 
     let cancelled = false;
 
@@ -167,6 +174,11 @@ export default function VideoCall() {
 
     return () => {
       cancelled = true;
+      // Reset the creation flag first so a future legitimate mount (new call)
+      // can create a frame. Critically, this runs AFTER handleEndCall has
+      // already set frameCreatingRef.current = true, so any re-run of the
+      // effect that fires *before* unmount still bails on the guard above.
+      frameCreatingRef.current = false;
       // Destroy the frame here — covers both unmount and any re-run of this
       // effect. Without this, a second run calls createFrame into an occupied
       // container and Daily throws a postMessage null error internally.
@@ -218,8 +230,11 @@ export default function VideoCall() {
 
     const frame = callFrameRef.current;
     if (frame) {
-      frame.leave().then(() => frame.destroy()).catch(() => frame.destroy());
-      callFrameRef.current = null;
+      // Initiate leave but don't null callFrameRef here. Keeping the ref
+      // non-null means the effect guard (callFrameRef.current truthy) still
+      // prevents a second createFrame call if a re-render fires before unmount.
+      // The effect cleanup (return fn) owns destroy + null on unmount.
+      frame.leave().catch(() => {});
     }
     if (user && callPartnerId) {
       completeRequest(user.id, callPartnerId).catch(() => {});

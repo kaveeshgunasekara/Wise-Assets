@@ -6,6 +6,7 @@ import {
   consentToShare,
   declinePost,
   editPost,
+  getLatestPendingCallSummaryPost,
   getMyCallSummaryPost,
   getMyCallSummaryPostByTime,
   getPostById,
@@ -98,7 +99,23 @@ export default function StoryCapture() {
         postAttempts++;
         timer = setTimeout(() => pollForPost(queryFn), POST_POLL_INTERVAL_MS);
       } else {
-        console.warn("[StoryCapture] ❌ gave up after", MAX_POST_ATTEMPTS, "attempts — post never appeared");
+        // Exhausted all timed attempts. Try one last-resort query that doesn't
+        // depend on callSessionId or a timestamp window — just the most recent
+        // pending_approval call_summary for this user. Catches the case where
+        // the Edge Function returned callSessionId=null (call_sessions insert
+        // failed) so the posts exist but have call_session_id=null.
+        console.warn("[StoryCapture] ❌ gave up after", MAX_POST_ATTEMPTS, "attempts — trying last-resort query");
+        try {
+          const lastResort = await getLatestPendingCallSummaryPost(user.id);
+          if (!cancelled && lastResort) {
+            console.log("[StoryCapture] ✅ last-resort query found post:", lastResort.id);
+            applyPost(lastResort);
+            return;
+          }
+        } catch (err) {
+          console.error("[StoryCapture] last-resort query threw:", err);
+        }
+        console.warn("[StoryCapture] ❌ last-resort also found nothing — showing 'still being prepared'");
         if (!cancelled) setLoadingPost(false);
       }
     };

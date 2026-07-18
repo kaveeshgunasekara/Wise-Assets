@@ -1,0 +1,16 @@
+Two bugs found via console logs. Fix both.
+
+BUG 1 — SUMMARY: The generate-story-summary Edge Function returns callSessionId: null (console shows "[handleEndCall] Edge Function returned no callSessionId"). So StoryCapture can't find posts via exact query, falls back to timestamp query, which ALSO fails (all 20 poll attempts fail), even though posts ARE created in the DB with valid call_session_ids.
+Fix:
+- In the Edge Function, ensure it ALWAYS returns the callSessionId it created. Check the call_sessions insert — it may be failing silently (e.g. the request lookup returns null because completeRequest hasn't committed yet, causing an issue). Make the session creation robust: create the call_sessions row even if no completed request is found (request_id can be null), and RETURN its id reliably in the response.
+- Also fix the timestamp fallback query (getMyCallSummaryPostByTime): it's returning null even though posts exist created seconds ago. Check the query — is the time window right? Is it filtering by author_id=current user correctly? Is it excluding pending_approval status by mistake? Log the exact query and why it returns null.
+- Best fix: make handleEndCall await the Edge Function response and get the real callSessionId, OR have StoryCapture query by (author_id = me AND type=call_summary AND status=pending_approval) ordered by created_at desc as the most reliable fallback, since that WILL match the just-created post.
+
+BUG 2 — CALL (intermittent): Console shows the call works (joined-meeting ✅), then after handleEndCall, the VideoCall frame-creation effect RE-RUNS ("Creating Daily iframe frame...") and crashes with "Cannot read properties of null (reading 'postMessage')" at VideoCall.tsx:73. The effect is re-running and creating a second frame. This is why it's intermittent — depends on re-render timing.
+Fix:
+- The frame-creation effect must NEVER run twice. Add a stronger guard: a ref flag (frameCreatedRef) set true immediately when frame creation STARTS, checked at the very top of the effect, so a re-run bails instantly. 
+- Ensure handleEndCall / navigation doesn't trigger the effect to re-run before unmount.
+- Make sure the effect's cleanup fully destroys the frame AND the guard prevents recreation.
+- The effect deps [user?.id, callPartnerId] may be changing after the call — investigate why the effect re-runs at all after joined-meeting.
+
+Fix both. Test: call joins cleanly with no postMessage error even after multiple renders, AND the summary appears on story-capture after End Call.

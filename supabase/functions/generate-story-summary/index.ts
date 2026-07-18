@@ -209,6 +209,9 @@ serve(async (req) => {
       profiles.find((p: UserProfile) => p.role === "learner") ?? profiles[1];
 
     // ── 2. Find the most-recent completed request between them ───────────────
+    // Note: completeRequest() is fire-and-forget in handleEndCall, so it may
+    // not have committed by the time we run here. requestId can legitimately
+    // be null; the call_sessions row is still created — request_id is optional.
     const { data: reqs } = await sb
       .from("requests")
       .select("id")
@@ -222,18 +225,32 @@ serve(async (req) => {
     const requestId: string | null = reqs?.[0]?.id ?? null;
 
     // ── 3. Create a call_sessions record ─────────────────────────────────────
-    const { data: sessionRow } = await sb
+    // Only include request_id when non-null — if the column has a NOT NULL
+    // constraint and the request hasn't committed yet, passing null would cause
+    // the insert to fail silently, returning a null callSessionId.
+    const sessionInsertData: Record<string, unknown> = {
+      transcript: transcript ?? null,
+      language: "en",
+      ended_at: new Date().toISOString(),
+    };
+    if (requestId !== null) {
+      sessionInsertData.request_id = requestId;
+    }
+
+    const { data: sessionRow, error: sessionErr } = await sb
       .from("call_sessions")
-      .insert({
-        request_id: requestId,
-        transcript: transcript ?? null,
-        language: "en",
-        ended_at: new Date().toISOString(),
-      })
+      .insert(sessionInsertData)
       .select("id")
       .single();
 
+    if (sessionErr) {
+      console.error("[story-summary] call_sessions insert failed:", JSON.stringify(sessionErr));
+    }
+
     const callSessionId: string | null = sessionRow?.id ?? null;
+    if (!callSessionId) {
+      console.warn("[story-summary] callSessionId is null — posts will be created without a session link. StoryCapture will fall back to latest-pending query.");
+    }
 
     // ── 4. Build topic context ────────────────────────────────────────────────
     const elderTopics: string[] = elder.topics ?? [];
