@@ -60,6 +60,7 @@ export default function SignUp() {
               <label className="block text-[16px] font-medium mb-2">Full name</label>
               <input
                 type="text"
+                autoComplete="name"
                 required
                 value={pendingName}
                 onChange={(e) => setPendingName(e.target.value)}
@@ -110,6 +111,7 @@ export default function SignUp() {
               <label className="block text-[16px] font-medium mb-2">Email</label>
               <input
                 type="email"
+                autoComplete="email"
                 required
                 value={pendingEmail}
                 onChange={(e) => setPendingEmail(e.target.value)}
@@ -126,6 +128,7 @@ export default function SignUp() {
               </div>
               <input
                 type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
                 required
                 minLength={6}
                 value={pendingPassword}
