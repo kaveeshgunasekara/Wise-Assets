@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import AppNav from "@/components/AppNav";
+import AvatarImage from "@/components/AvatarImage";
 import { useApp } from "@/hooks/use-app";
 import {
   getPosts,
@@ -471,7 +472,7 @@ export default function WisdomWall() {
                   return (
                     <div key={req.id} className="bg-white p-6 rounded-[18px] card-shadow card-hoverable flex flex-col sm:flex-row gap-4 justify-between items-center">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{fromUser?.name?.[0] ?? "?"}</div>
+                        <AvatarImage user={fromUser} className="w-12 h-12 text-xl shrink-0" />
                         <div>
                           <h3 className="font-semibold text-[18px]">{fromUser?.name ?? "Someone"}</h3>
                           <p className="text-[13px] text-foreground/50 mt-0.5">{fromUser?.age} years old</p>
@@ -506,7 +507,7 @@ export default function WisdomWall() {
                       className={`p-6 rounded-[18px] card-shadow card-hoverable flex flex-col sm:flex-row gap-4 justify-between items-center ${isAccepted ? "bg-[#F0FAF4] border border-[#A3D9B1]" : "bg-white"}`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-xl">{toUser?.name?.[0] ?? "?"}</div>
+                        <AvatarImage user={toUser} className="w-12 h-12 text-xl shrink-0" />
                         <div>
                           <h3 className="font-semibold text-[18px]">{toUser?.name ?? "Someone"}</h3>
                           <p className="text-[13px] text-foreground/50 mt-0.5">{toUser?.age} years old</p>
@@ -601,9 +602,7 @@ export default function WisdomWall() {
                       <div className="mt-auto border-t border-border pt-5">
                         {/* Author + partner context line */}
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-base shrink-0">
-                            {user?.name?.[0] ?? "?"}
-                          </div>
+                          <AvatarImage user={user} className="w-8 h-8 text-base shrink-0" />
                           <div className="text-[13px] text-foreground/60">
                             {user?.name}{user?.age ? `, ${user.age}` : ""}
                             {pInfo?.name ? ` · with ${pInfo.name}` : ""}
@@ -698,9 +697,7 @@ export default function WisdomWall() {
                       <>
                         <div className="flex items-center justify-between mt-auto pt-6 border-t border-border">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-lg shrink-0">
-                              {author?.name?.[0] ?? "?"}
-                            </div>
+                            <AvatarImage user={author} className="w-10 h-10 text-lg shrink-0" />
                             <div>
                               <div className="font-medium text-[15px] text-foreground">{author?.name}</div>
                               <div className="text-[13px] text-foreground/45 mt-0.5">

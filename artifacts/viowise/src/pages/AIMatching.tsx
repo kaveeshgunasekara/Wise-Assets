@@ -1,4 +1,5 @@
 import AppNav from "@/components/AppNav";
+import AvatarImage from "@/components/AvatarImage";
 import { useApp } from "@/hooks/use-app";
 import { useEffect, useState } from "react";
 import { getMatches, getMatchReason, getSentRequests, requestCall, logInteraction } from "@/services/api";
@@ -136,8 +137,8 @@ export default function AIMatching() {
                 >
                   <div className="flex flex-col sm:flex-row gap-6 justify-between items-start">
                     <div className="flex gap-4">
-                      <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-2xl relative shrink-0">
-                        {m.user.name[0]}
+                      <div className="relative shrink-0">
+                        <AvatarImage user={m.user} className="w-16 h-16 text-2xl" />
                         {m.user.verified && (
                           <div className="absolute -bottom-1 -right-1 bg-success text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white" title="ID Verified">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>

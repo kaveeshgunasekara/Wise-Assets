@@ -3,6 +3,7 @@ import { useApp } from "@/hooks/use-app";
 import { useState, useEffect } from "react";
 import AccessibilityControl from "@/components/AccessibilityControl";
 import { supabase } from "@/services/supabase";
+import AvatarImage from "@/components/AvatarImage";
 
 export default function AppNav() {
   const { user, setUser, setRole } = useApp();
@@ -19,8 +20,6 @@ export default function AppNav() {
     onScroll(); // check on mount (page might already be scrolled)
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const initial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
 
   const handleSignOut = async () => {
     setProfileMenuOpen(false);
@@ -71,11 +70,11 @@ export default function AppNav() {
           <div className="relative hidden md:block">
             <button
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-              className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-lg border border-primary/20"
+              className="w-10 h-10 rounded-full overflow-hidden border border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               aria-expanded={profileMenuOpen}
               aria-label="User menu"
             >
-              {initial}
+              <AvatarImage user={user} className="w-10 h-10 text-lg" />
             </button>
 
             {profileMenuOpen && (
@@ -156,9 +155,7 @@ export default function AppNav() {
           {/* Profile section */}
           <div className="px-4 py-2 border-t border-border">
             <div className="flex items-center gap-3 px-3 py-2 mb-1">
-              <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-base border border-primary/20 shrink-0">
-                {initial}
-              </div>
+              <AvatarImage user={user} className="w-9 h-9 text-base shrink-0" />
               <span className="font-medium text-foreground text-[15px] truncate">{user?.name ?? "Account"}</span>
             </div>
             <Link

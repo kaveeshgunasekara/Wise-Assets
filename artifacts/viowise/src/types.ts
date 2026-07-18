@@ -12,6 +12,7 @@ export interface User {
   bio: string;
   credential?: string;
   verified: boolean;
+  avatar_url?: string;
 }
 
 export type PostType = "wisdom" | "reflection" | "call_summary";

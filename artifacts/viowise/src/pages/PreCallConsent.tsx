@@ -1,4 +1,5 @@
 import AppNav from "@/components/AppNav";
+import AvatarImage from "@/components/AvatarImage";
 import { useApp } from "@/hooks/use-app";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
@@ -54,9 +55,7 @@ export default function PreCallConsent() {
       <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-12">
         
         <div className="flex flex-col items-center text-center mb-10">
-          <div className="w-20 h-20 rounded-full bg-primary/10 text-primary flex items-center justify-center font-serif text-3xl mb-4 border border-border">
-            {partnerName[0]}
-          </div>
+          <AvatarImage user={partner} className="w-20 h-20 text-3xl mb-4" />
           <h1 className="text-[32px] font-semibold text-foreground">Your call with {partnerName}</h1>
           <p className="text-[20px] text-foreground/70 mt-2">Ready when you are</p>
         </div>
