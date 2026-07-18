@@ -74,10 +74,9 @@ export default function Landing() {
           }}
         />
 
-        {/* Video — scaled 1.28× and shifted down so the top ~18% of the
-            source frame (where the PixVerse watermark lives) is cropped
-            out by the parent overflow:hidden.
-            transform-origin: center top keeps faces in the centre frame. */}
+        {/* Full-screen background video — hero-video.mp4 (iStock).
+            No transform: the watermark is in the centre and is masked by
+            the radial overlay + the hero text block that sits on top.     */}
         {showVideo && (
           <video
             ref={videoRef}
@@ -94,33 +93,40 @@ export default function Landing() {
               height: "100%",
               objectFit: "cover",
               objectPosition: "center 50%",
-              opacity: 0.82,
+              opacity: 0.80,
               pointerEvents: "none",
-              /* scale(1.1) from center center expands the element ±5% beyond
-                 the container edges on all sides.
-                 translateY(-5%) shifts up by exactly 5% so that:
-                   top    → -5% - 5% = -10% (hides the top 10% of the frame,
-                            which covers the PixVerse watermark region; the
-                            120px top scrim masks anything remaining)
-                   bottom → +5% - 5% = 0%  (sits flush at container bottom,
-                            no gap) */
-              transform: "scale(1.1) translateY(-5%)",
-              transformOrigin: "center center",
             }}
           />
         )}
 
-        {/* Central overlay */}
+        {/* Primary centre overlay — white-lavender radial gradient.
+            High opacity at the centre buries the iStock watermark;
+            fades to transparent at edges so the video remains visible
+            on the sides of the frame.                                  */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background: highContrast
               ? "rgba(240,237,248,0.97)"
-              : "radial-gradient(ellipse 80% 60% at 50% 52%, rgba(247,245,251,0.92) 0%, rgba(247,245,251,0.76) 30%, rgba(247,245,251,0.40) 65%, rgba(247,245,251,0.10) 100%)",
+              : "radial-gradient(ellipse 70% 55% at 50% 52%, rgba(247,245,251,0.97) 0%, rgba(247,245,251,0.88) 25%, rgba(247,245,251,0.55) 60%, rgba(247,245,251,0.12) 100%)",
             pointerEvents: "none",
           }}
         />
+
+        {/* Secondary watermark-cover layer — a tighter, near-opaque ellipse
+            sitting directly over the centre where the watermark lives,
+            behind all text so nothing is obscured for the user.        */}
+        {!highContrast && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "radial-gradient(ellipse 50% 35% at 50% 52%, rgba(247,245,251,0.96) 0%, rgba(247,245,251,0.70) 50%, transparent 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
 
         {/* Top scrim — keeps nav text readable */}
         {!highContrast && (
