@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useApp } from "@/hooks/use-app";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AccessibilityControl from "@/components/AccessibilityControl";
 import { supabase } from "@/services/supabase";
 
@@ -9,6 +9,16 @@ export default function AppNav() {
   const [location, setLocation] = useLocation();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Show a shadow once the user has scrolled past the header so it's clear
+  // the bar is sticky and content is sliding beneath it.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll(); // check on mount (page might already be scrolled)
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
 
@@ -27,7 +37,7 @@ export default function AppNav() {
     `font-medium ${location === path ? "text-primary" : "text-foreground/70 hover:text-foreground"}`;
 
   return (
-    <header className="bg-white border-b border-border sticky top-0 z-50">
+    <header className={`bg-white border-b border-border sticky top-0 z-50 transition-shadow duration-200 ${scrolled ? "shadow-[0_2px_12px_rgba(83,64,155,0.10)]" : ""}`}>
       <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
         {/* ── Logo ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-6">
