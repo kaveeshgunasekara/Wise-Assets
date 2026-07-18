@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useApp } from "@/hooks/use-app";
 import AppNav from "@/components/AppNav";
+import TopicPicker from "@/components/TopicPicker";
 import {
   consentToShare,
   declinePost,
@@ -33,6 +34,7 @@ export default function StoryCapture() {
   const [loadingPost, setLoadingPost] = useState(true);
   const [quoteText, setQuoteText] = useState("");
   const [originalQuoteText, setOriginalQuoteText] = useState("");
+  const [selectedTopic, setSelectedTopic] = useState<string>("");
 
   // Two-phase polling strategy:
   //
@@ -76,6 +78,7 @@ export default function StoryCapture() {
       setPost(found);
       setQuoteText(found.quote);
       setOriginalQuoteText(found.quote);
+      setSelectedTopic(found.topic);
       setLoadingPost(false);
       if (found.status === "published") setShareState("published");
       else if (found.authorConsented) setShareState("waiting");
@@ -211,9 +214,10 @@ export default function StoryCapture() {
     if (!user || !post || working) return;
     setWorking(true);
     try {
-      if (quoteText !== originalQuoteText) {
-        await editPost(post.id, { quote: quoteText });
-      }
+      const updates: { quote?: string; topic?: string } = {};
+      if (quoteText !== originalQuoteText) updates.quote = quoteText;
+      if (selectedTopic && selectedTopic !== post.topic) updates.topic = selectedTopic;
+      if (Object.keys(updates).length > 0) await editPost(post.id, updates);
       await consentToShare(post.id);
       setShareState("waiting");
     } catch {
@@ -251,6 +255,7 @@ export default function StoryCapture() {
           setPost(found);
           setQuoteText(found.quote);
           setOriginalQuoteText(found.quote);
+          setSelectedTopic(found.topic);
           if (found.status === "published") setShareState("published");
           else if (found.authorConsented) setShareState("waiting");
         }
@@ -357,6 +362,14 @@ export default function StoryCapture() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Topic selector (only while deciding, not after sharing) ── */}
+          {!loadingPost && post && shareState === "idle" && (
+            <div className="mt-6 pt-5 border-t border-[#C5BCDF]/50">
+              <p className="text-[14px] font-medium text-foreground/70 mb-3">Topic for this story</p>
+              <TopicPicker value={selectedTopic} onChange={setSelectedTopic} />
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import AppNav from "@/components/AppNav";
 import AvatarImage from "@/components/AvatarImage";
+import TopicPicker from "@/components/TopicPicker";
 import { useApp } from "@/hooks/use-app";
 import {
   getPosts,
@@ -78,6 +79,7 @@ export default function WisdomWall() {
   // name null = couldn't load; postExists false = partner deleted their post
   const [partnerInfo, setPartnerInfo] = useState<Record<string, { name: string | null; postExists: boolean }>>({});
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [pendingTopics, setPendingTopics] = useState<Record<string, string>>({});
   const [editingText, setEditingText] = useState("");
   const [myPostsWorking, setMyPostsWorking] = useState<Record<string, boolean>>({});
 
@@ -218,10 +220,33 @@ export default function WisdomWall() {
   const authorOf = (post: Post) => users.find((u) => u.id === post.authorId);
 
   // ── My Posts call-summary handlers ─────────────────────────────────────────
-  const handleMyPostsShare = async (postId: string) => {
+  // Seed pendingTopics with the DB topic for any pending call-summary that
+  // the user hasn't manually changed yet. Only fills gaps — never overwrites
+  // a topic the user has already chosen in this session.
+  useEffect(() => {
+    setPendingTopics((prev) => {
+      const next = { ...prev };
+      posts.forEach((p) => {
+        if (p.type === "call_summary" && p.status === "pending_approval" && p.authorId === user?.id) {
+          if (!(p.id in next)) next[p.id] = p.topic;
+        }
+      });
+      return next;
+    });
+  }, [posts, user?.id]);
+
+  const handleMyPostsShare = async (postId: string, topic?: string) => {
     setMyPostsWorking((prev) => ({ ...prev, [postId]: true }));
-    try { await consentToShare(postId); await refreshPosts(); }
-    finally { setMyPostsWorking((prev) => ({ ...prev, [postId]: false })); }
+    try {
+      const targetPost = posts.find((p) => p.id === postId);
+      if (topic && targetPost && topic !== targetPost.topic) {
+        await editPost(postId, { topic });
+      }
+      await consentToShare(postId);
+      await refreshPosts();
+    } finally {
+      setMyPostsWorking((prev) => ({ ...prev, [postId]: false }));
+    }
   };
 
   const handleMyPostsKeepPrivate = async (postId: string) => {
@@ -630,6 +655,15 @@ export default function WisdomWall() {
                           ) : (
                             <>
                               <p className="text-[13px] text-foreground/50 mb-3">Not shared yet — only you can see this.</p>
+                              {/* Topic picker */}
+                              <div className="mb-3">
+                                <p className="text-[11px] font-medium text-foreground/45 uppercase tracking-[0.08em] mb-1.5">Topic</p>
+                                <TopicPicker
+                                  value={pendingTopics[post.id] ?? post.topic}
+                                  onChange={(t) => setPendingTopics((prev) => ({ ...prev, [post.id]: t }))}
+                                  compact
+                                />
+                              </div>
                               <div className="flex flex-wrap gap-2">
                                 <button
                                   onClick={() => { setEditingPostId(post.id); setEditingText(post.quote); }}
@@ -638,7 +672,7 @@ export default function WisdomWall() {
                                   Edit
                                 </button>
                                 <button
-                                  onClick={() => handleMyPostsShare(post.id)}
+                                  onClick={() => handleMyPostsShare(post.id, pendingTopics[post.id])}
                                   disabled={myPostsWorking[post.id]}
                                   className="h-9 px-4 bg-primary text-white rounded-lg text-[13px] font-medium hover:bg-primary-hover transition disabled:opacity-40"
                                 >
