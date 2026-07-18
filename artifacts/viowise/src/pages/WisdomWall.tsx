@@ -10,7 +10,7 @@ import {
   consentToShare,
   revokeConsent,
   editPost,
-  getCallSummaryPartnerUserId,
+  getPartnerPostStatus,
   getUserById,
   getPostById,
   createPost,
@@ -71,6 +71,7 @@ function PendingCallSummaryFooter({
   onShare,
   onKeepPrivate,
   onUnshare,
+  partnerConsented = false,
 }: {
   post: Post;
   user: User | null | undefined;
@@ -84,6 +85,7 @@ function PendingCallSummaryFooter({
   onShare: (postId: string, topic: string) => void;
   onKeepPrivate: (postId: string) => void;
   onUnshare: (post: Post) => void;
+  partnerConsented?: boolean;
 }) {
   const [selectedTopic, setSelectedTopic] = useState(post.topic);
 
@@ -118,7 +120,13 @@ function PendingCallSummaryFooter({
           </div>
         ) : (
           <>
-            <p className="text-[13px] text-foreground/50 mb-3">Not shared yet — only you can see this.</p>
+            {partnerConsented ? (
+              <p className="text-[13px] font-medium text-primary/90 bg-primary/8 rounded-lg px-3 py-2 mb-3">
+                {pInfo?.name ?? "Your call partner"} already shared their story from this call — share yours too to publish both, or keep it private.
+              </p>
+            ) : (
+              <p className="text-[13px] text-foreground/50 mb-3">Not shared yet — only you can see this.</p>
+            )}
             <div className="mb-3">
               <p className="text-[11px] font-medium text-foreground/45 uppercase tracking-[0.08em] mb-1.5">Topic</p>
               <TopicPicker
@@ -217,9 +225,9 @@ export default function WisdomWall() {
   const [posting, setPosting] = useState(false);
 
   // ── My Posts call-summary management ─────────────────────────────────────
-  // partnerInfo[callSessionId] = { name, postExists }
+  // partnerInfo[callSessionId] = { name, postExists, partnerConsented }
   // name null = couldn't load; postExists false = partner deleted their post
-  const [partnerInfo, setPartnerInfo] = useState<Record<string, { name: string | null; postExists: boolean }>>({});
+  const [partnerInfo, setPartnerInfo] = useState<Record<string, { name: string | null; postExists: boolean; partnerConsented: boolean }>>({});
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [myPostsWorking, setMyPostsWorking] = useState<Record<string, boolean>>({});
@@ -298,15 +306,19 @@ export default function WisdomWall() {
     pending.forEach(async (p) => {
       if (!p.callSessionId) return;
       partnerNamesFetchedRef.current.add(p.callSessionId);
-      const partnerId = await getCallSummaryPartnerUserId(p.callSessionId, user.id);
+      const status = await getPartnerPostStatus(p.callSessionId, user.id);
       let name: string | null = null;
-      if (partnerId) {
-        const partnerUser = await getUserById(partnerId);
+      if (status?.authorId) {
+        const partnerUser = await getUserById(status.authorId);
         name = partnerUser?.name ?? null;
       }
       setPartnerInfo((prev) => ({
         ...prev,
-        [p.callSessionId!]: { name, postExists: partnerId !== null },
+        [p.callSessionId!]: {
+          name,
+          postExists: status !== null,
+          partnerConsented: status?.authorConsented ?? false,
+        },
       }));
     });
   }, [posts, user?.id]); // partnerInfo intentionally excluded — would cause infinite loop
@@ -342,15 +354,23 @@ export default function WisdomWall() {
           return; // refreshPosts will update state; let next tick re-evaluate
         }
       }
-      // Re-check whether each partner's post still exists
+      // Re-check whether each partner's post still exists AND whether they've now consented
       pendingPosts.forEach(async (p) => {
         if (!p.callSessionId) return;
-        const partnerId = await getCallSummaryPartnerUserId(p.callSessionId, user.id);
+        const status = await getPartnerPostStatus(p.callSessionId, user.id);
         setPartnerInfo((prev) => {
           const cur = prev[p.callSessionId!];
-          const nowExists = partnerId !== null;
-          if (cur && cur.postExists === nowExists) return prev;
-          return { ...prev, [p.callSessionId!]: { name: cur?.name ?? null, postExists: nowExists } };
+          const nowExists = status !== null;
+          const nowConsented = status?.authorConsented ?? false;
+          if (cur && cur.postExists === nowExists && cur.partnerConsented === nowConsented) return prev;
+          return {
+            ...prev,
+            [p.callSessionId!]: {
+              name: cur?.name ?? null,
+              postExists: nowExists,
+              partnerConsented: nowConsented,
+            },
+          };
         });
       });
     }, 3000);
@@ -364,9 +384,14 @@ export default function WisdomWall() {
   const handleMyPostsShare = async (postId: string, topic?: string) => {
     setMyPostsWorking((prev) => ({ ...prev, [postId]: true }));
     try {
-      const targetPost = posts.find((p) => p.id === postId);
-      if (topic && targetPost && topic !== targetPost.topic) {
-        await editPost(postId, { topic });
+      if (topic) {
+        console.log("[handleMyPostsShare] saving topic:", topic, "for post:", postId);
+        const result = await editPost(postId, { topic });
+        if (result) {
+          console.log("[handleMyPostsShare] topic saved ✓  DB value:", result.topic);
+        } else {
+          console.error("[handleMyPostsShare] editPost returned undefined — RLS may have blocked the update. Attempted topic:", topic);
+        }
       }
       await consentToShare(postId);
       await refreshPosts();
@@ -482,6 +507,14 @@ export default function WisdomWall() {
     myRequests.filter((r) => r.status === "pending").length +
     sentRequests.filter((r) => r.status === "accepted").length;
 
+  const undecidedPendingCount = posts.filter(
+    (p) =>
+      p.authorId === user?.id &&
+      p.type === "call_summary" &&
+      p.status === "pending_approval" &&
+      !p.authorConsented,
+  ).length;
+
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
 
@@ -514,6 +547,9 @@ export default function WisdomWall() {
                   {t}
                   {t === "Requests" && pendingRequestCount > 0 && (
                     <span className="ml-2 bg-primary text-white text-[13px] px-2 py-0.5 rounded-full">{pendingRequestCount}</span>
+                  )}
+                  {t === "My posts" && undecidedPendingCount > 0 && (
+                    <span className="ml-2 bg-primary text-white text-[13px] px-2 py-0.5 rounded-full">{undecidedPendingCount}</span>
                   )}
                 </button>
               ))}
@@ -763,6 +799,7 @@ export default function WisdomWall() {
                         onShare={handleMyPostsShare}
                         onKeepPrivate={handleMyPostsKeepPrivate}
                         onUnshare={handleMyPostsUnshare}
+                        partnerConsented={pInfo?.partnerConsented}
                       />
                     ) : (
                       /* Standard card footer */

@@ -214,6 +214,24 @@ export async function getCallSummaryPartnerUserId(
   return (data as { author_id: string } | null)?.author_id ?? null;
 }
 
+// Returns the partner's post presence + consent status for a call summary session.
+// Returns null if the partner deleted their post (chose Keep private).
+export async function getPartnerPostStatus(
+  callSessionId: string,
+  myUserId: string,
+): Promise<{ authorId: string; authorConsented: boolean } | null> {
+  const { data } = await supabase
+    .from("posts")
+    .select("author_id, author_consented")
+    .eq("call_session_id", callSessionId)
+    .eq("type", "call_summary")
+    .neq("author_id", myUserId)
+    .maybeSingle();
+  if (!data) return null;
+  const row = data as { author_id: string; author_consented: boolean | null };
+  return { authorId: row.author_id, authorConsented: row.author_consented ?? false };
+}
+
 // Posts can be edited by their author but never deleted — a story someone
 // shared should stay attributable and auditable, just correctable.
 export async function editPost(
