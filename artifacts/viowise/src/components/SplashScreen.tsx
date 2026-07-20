@@ -46,18 +46,11 @@ export default function SplashScreen() {
 
       {/* Logo: icon + wordmark drift up together */}
       <div className="splash-logo">
-        <svg
-          width="58"
-          height="58"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        {/* Favicon two-rect icon — fills lightened for legibility on dark violet bg */}
+        <svg width="58" height="58" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+          <rect x="6" y="8" width="38" height="26" rx="13" fill="rgba(255,255,255,0.52)"/>
+          <rect x="22" y="16" width="36" height="34" rx="14" fill="white"/>
+          <path d="M26 49L26 59L36 49Z" fill="white"/>
         </svg>
 
         <span

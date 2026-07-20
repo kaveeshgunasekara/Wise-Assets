@@ -205,8 +205,10 @@ export default function Landing() {
           className="flex items-center gap-2 text-primary font-bold tracking-wide uppercase"
           style={{ fontSize: "1.125rem" }}
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          <svg width="26" height="26" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <rect x="6" y="8" width="38" height="26" rx="13" fill="#9B8FCB"/>
+            <rect x="22" y="16" width="36" height="34" rx="14" fill="#53409B"/>
+            <path d="M26 49L26 59L36 49Z" fill="#53409B"/>
           </svg>
           VIOWISE
         </div>
