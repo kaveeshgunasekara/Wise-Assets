@@ -291,12 +291,12 @@ export default function StoryCapture() {
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
       <AppNav />
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
-        <div className="text-center mb-10">
-          <span className="inline-block px-4 py-2 bg-success/10 text-success rounded-full text-base font-semibold border border-success/20 mb-6">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
+        <div className="text-center mb-8 sm:mb-10">
+          <span className="inline-block px-4 py-2 bg-success/10 text-success rounded-full text-base font-semibold border border-success/20 mb-5 sm:mb-6">
             Call ended
           </span>
-          <h1 className="text-[40px] font-serif text-foreground leading-tight">
+          <h1 className="text-[28px] sm:text-[40px] font-serif text-foreground leading-tight">
             That was a wonderful conversation{user?.name ? `, ${user.name}` : ""}.
           </h1>
         </div>
@@ -333,10 +333,10 @@ export default function StoryCapture() {
             <textarea
               value={quoteText}
               onChange={(e) => setQuoteText(e.target.value)}
-              className="w-full p-4 rounded-xl border border-primary/30 bg-white font-serif italic text-[24px] leading-relaxed mb-6 outline-none focus:ring-2 focus:ring-primary/20 min-h-[160px]"
+              className="w-full p-4 rounded-xl border border-primary/30 bg-white font-serif italic text-[18px] sm:text-[24px] leading-relaxed mb-6 outline-none focus:ring-2 focus:ring-primary/20 min-h-[140px] sm:min-h-[160px]"
             />
           ) : (
-            <p className="font-serif italic text-[24px] leading-relaxed text-foreground mb-8">
+            <p className="font-serif italic text-[18px] sm:text-[24px] leading-relaxed text-foreground mb-6 sm:mb-8">
               "{quoteText}"
             </p>
           )}

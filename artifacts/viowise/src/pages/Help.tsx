@@ -7,15 +7,15 @@ export default function Help() {
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
       <AppNav />
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
-        <button onClick={() => window.history.back()} className="flex items-center gap-2 text-primary font-medium mb-8 hover:underline">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
+        <button onClick={() => window.history.back()} className="flex items-center gap-2 text-primary font-medium mb-6 sm:mb-8 hover:underline">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           Back
         </button>
 
-        <h1 className="text-[40px] font-serif text-foreground mb-12">How VIOWISE works</h1>
+        <h1 className="text-[32px] sm:text-[40px] font-serif text-foreground mb-8 sm:mb-12">How VIOWISE works</h1>
 
-        <div className="bg-white p-8 rounded-[16px] card-shadow space-y-8 mb-12">
+        <div className="bg-white p-5 sm:p-8 rounded-[16px] card-shadow space-y-6 sm:space-y-8 mb-8 sm:mb-12">
           
           <div className="flex gap-6">
             <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">

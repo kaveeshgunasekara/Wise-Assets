@@ -52,16 +52,16 @@ export default function PreCallConsent() {
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
       <AppNav />
-      <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-12">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
         
-        <div className="flex flex-col items-center text-center mb-10">
+        <div className="flex flex-col items-center text-center mb-8 sm:mb-10">
           <AvatarImage user={partner} className="w-20 h-20 text-3xl mb-4" />
           <h1 className="text-[32px] font-semibold text-foreground">Your call with {partnerName}</h1>
           <p className="text-[20px] text-foreground/70 mt-2">Ready when you are</p>
         </div>
 
-        <div className="bg-white p-8 rounded-[16px] card-shadow mb-8">
-          <h2 className="text-[20px] font-semibold mb-6">Before you join — your choices</h2>
+        <div className="bg-white p-5 sm:p-8 rounded-[16px] card-shadow mb-6 sm:mb-8">
+          <h2 className="text-[20px] font-semibold mb-5 sm:mb-6">Before you join — your choices</h2>
           
           <div className="space-y-6">
             <div className={`flex items-start justify-between p-4 rounded-[12px] border-2 transition-colors ${subtitlesConsent ? 'border-primary/30 bg-primary/5' : 'border-border'}`}>

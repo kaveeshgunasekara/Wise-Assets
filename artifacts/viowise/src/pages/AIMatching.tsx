@@ -11,18 +11,18 @@ function MatchSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Loading matches">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="bg-white p-6 rounded-[18px] card-shadow flex flex-col gap-5">
+        <div key={i} className="bg-white p-5 sm:p-6 rounded-[18px] card-shadow flex flex-col gap-5">
           <div className="flex gap-4">
             <div className="skeleton w-16 h-16 rounded-full shrink-0" />
             <div className="flex-1 flex flex-col gap-3">
-              <div className="skeleton h-5 w-40" />
-              <div className="skeleton h-4 w-64" />
+              <div className="skeleton h-5 w-32 sm:w-40" />
+              <div className="skeleton h-4 w-full sm:w-64" />
               <div className="flex gap-2 mt-1">
-                <div className="skeleton h-7 w-24 rounded-full" />
-                <div className="skeleton h-7 w-28 rounded-full" />
+                <div className="skeleton h-7 w-20 sm:w-24 rounded-full" />
+                <div className="skeleton h-7 w-24 sm:w-28 rounded-full" />
               </div>
             </div>
-            <div className="flex flex-col items-end gap-3 shrink-0 w-40">
+            <div className="flex-col items-end gap-3 shrink-0 hidden sm:flex w-40">
               <div className="skeleton h-8 w-16 rounded-lg" />
               <div className="skeleton h-11 w-full rounded-[12px]" />
             </div>
@@ -108,10 +108,10 @@ export default function AIMatching() {
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
       <AppNav />
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-12">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
-            <h1 className="text-[40px] font-serif text-foreground leading-tight">Your matches</h1>
+            <h1 className="text-[32px] sm:text-[40px] font-serif text-foreground leading-tight">Your matches</h1>
             <p className="text-[18px] text-foreground/70 mt-2">Ranked by our AI — you choose.</p>
           </div>
           <div className="text-right">

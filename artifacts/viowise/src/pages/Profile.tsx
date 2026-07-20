@@ -161,14 +161,14 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
       <AppNav />
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
-        <h1 className="text-[40px] font-serif text-foreground mb-8">Your Profile</h1>
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
+        <h1 className="text-[32px] sm:text-[40px] font-serif text-foreground mb-6 sm:mb-8">Your Profile</h1>
 
         <form onSubmit={handleSave} className="space-y-10">
 
           {/* ── Photo section ─────────────────────────────────────────────── */}
-          <div className="bg-white p-8 rounded-[16px] card-shadow">
-            <h2 className="text-[18px] font-medium mb-6">Profile photo</h2>
+          <div className="bg-white p-5 sm:p-8 rounded-[16px] card-shadow">
+            <h2 className="text-[18px] font-medium mb-4 sm:mb-6">Profile photo</h2>
             <div className="flex items-center gap-6">
               <AvatarImage user={avatarDisplayUser} className="w-24 h-24 text-3xl shrink-0" />
               <div className="flex flex-col gap-3">
@@ -213,12 +213,12 @@ export default function Profile() {
           </div>
 
           {/* ── Topics ───────────────────────────────────────────────────── */}
-          <div className="bg-white p-8 rounded-[16px] card-shadow">
+          <div className="bg-white p-5 sm:p-8 rounded-[16px] card-shadow">
             <TopicSelect selected={selectedTopics} onToggle={toggleTopic} />
           </div>
 
           {/* ── Details ──────────────────────────────────────────────────── */}
-          <div className="bg-white p-8 rounded-[16px] card-shadow space-y-6">
+          <div className="bg-white p-5 sm:p-8 rounded-[16px] card-shadow space-y-6">
             <div>
               <label className="block text-[16px] font-medium mb-2">Display name</label>
               <input

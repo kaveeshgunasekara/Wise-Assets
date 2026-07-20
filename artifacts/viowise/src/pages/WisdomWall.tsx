@@ -649,7 +649,7 @@ export default function WisdomWall() {
       </div>{/* end sticky control zone */}
 
       {/* ── Scrollable content: only posts / requests scroll beneath the zone ── */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-6">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
 
         {loading ? (
           <WallSkeleton />
@@ -756,7 +756,7 @@ export default function WisdomWall() {
                 return (
                   <div
                     key={post.id}
-                    className="bg-white p-8 rounded-[18px] card-shadow card-hoverable flex flex-col h-full relative animate-card-in"
+                    className="bg-white p-5 sm:p-8 rounded-[18px] card-shadow card-hoverable flex flex-col h-full relative animate-card-in"
                     style={{ "--card-delay": `${index * 60}ms` } as React.CSSProperties}
                   >
                     {/* Badges */}
@@ -785,7 +785,7 @@ export default function WisdomWall() {
                         className="flex-1 w-full p-4 rounded-xl border border-primary/30 bg-white font-serif italic text-[22px] leading-relaxed mb-6 outline-none focus:ring-2 focus:ring-primary/20 min-h-[160px] resize-none"
                       />
                     ) : (
-                      <p className="font-serif italic text-[26px] leading-relaxed flex-1 mb-8 text-foreground">
+                      <p className="font-serif italic text-[20px] sm:text-[26px] leading-relaxed flex-1 mb-6 sm:mb-8 text-foreground">
                         "{post.quote}"
                       </p>
                     )}

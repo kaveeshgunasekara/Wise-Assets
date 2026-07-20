@@ -445,7 +445,8 @@ export default function VideoCall() {
           Daily's own mic/camera/leave tray rendered underneath; only the
           buttons themselves re-enable pointer events. */}
       {!callError && (
-        <footer className="absolute bottom-0 w-full p-6 flex justify-center items-end gap-6 z-20 bg-gradient-to-t from-[#17141F]/80 to-transparent pt-32 pointer-events-none">
+        <footer className="absolute bottom-0 w-full px-6 pt-32 flex justify-center items-end gap-6 z-20 bg-gradient-to-t from-[#17141F]/80 to-transparent pointer-events-none"
+          style={{ paddingBottom: "max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}>
           <button onClick={handleEndCall} className="flex flex-col items-center gap-2 group pointer-events-auto">
             <div className="w-16 h-16 rounded-full bg-[#DC2626] hover:bg-[#B91C1C] flex items-center justify-center transition shadow-lg shadow-red-900/20">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -455,7 +456,8 @@ export default function VideoCall() {
             <span className="text-base font-medium text-red-400">End call</span>
           </button>
 
-          <button onClick={() => setReportModal(1)} className="flex flex-col items-center gap-2 group absolute right-6 bottom-6 pointer-events-auto">
+          <button onClick={() => setReportModal(1)} className="flex flex-col items-center gap-2 group absolute right-4 sm:right-6 pointer-events-auto"
+            style={{ bottom: "max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}>
             <div className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
