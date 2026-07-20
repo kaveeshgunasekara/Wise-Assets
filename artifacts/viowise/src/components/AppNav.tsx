@@ -37,9 +37,11 @@ export default function AppNav() {
 
   return (
     <header className={`bg-white border-b border-border sticky top-0 z-50 transition-shadow duration-200 ${scrolled ? "shadow-[0_2px_12px_rgba(83,64,155,0.10)]" : ""}`}>
-      <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-        {/* ── Logo ──────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-6">
+      {/* On desktop: 3-column grid so tabs sit in the true horizontal center.
+           On mobile: flex justify-between so hamburger layout is unchanged. */}
+      <div className="px-4 sm:px-6 py-3 flex items-center justify-between md:grid md:grid-cols-3">
+        {/* ── Left: Logo ────────────────────────────────────────────────── */}
+        <div className="flex items-center">
           <Link
             href="/wall"
             className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base shrink-0"
@@ -49,16 +51,16 @@ export default function AppNav() {
             </svg>
             VIOWISE
           </Link>
-
-          {/* ── Desktop nav tabs ──────────────────────────────────────── */}
-          <nav className="hidden md:flex gap-6">
-            <Link href="/wall" className={navLinkClass("/wall")}>Wisdom Wall</Link>
-            <Link href="/matching" className={navLinkClass("/matching")}>AI Matching</Link>
-          </nav>
         </div>
 
-        {/* ── Right-side controls ───────────────────────────────────── */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* ── Center: Desktop nav tabs — hidden on mobile ───────────────── */}
+        <nav className="hidden md:flex items-center justify-center gap-6">
+          <Link href="/wall" className={navLinkClass("/wall")}>Wisdom Wall</Link>
+          <Link href="/matching" className={navLinkClass("/matching")}>AI Matching</Link>
+        </nav>
+
+        {/* ── Right: Help, Accessibility, avatar, hamburger ─────────────── */}
+        <div className="flex items-center justify-end gap-2 sm:gap-3">
           {/* Help — desktop only */}
           <Link href="/help" className="font-medium text-foreground/70 hover:text-foreground hidden md:block">
             Help
