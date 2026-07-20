@@ -24,6 +24,7 @@ import Help from "@/pages/Help";
 import NotFound from "@/pages/not-found";
 import VoiceNav from "@/components/VoiceNav";
 import ScrollToTop from "@/components/ScrollToTop";
+import SplashScreen from "@/components/SplashScreen";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ function App() {
       <TooltipProvider>
         <AppProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <SplashScreen />
             <ScrollToTop />
             <Router />
             <VoiceNav />
