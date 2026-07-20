@@ -1,5 +1,11 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="6" y="8" width="38" height="26" rx="13" fill="#9B8FCB"/>
-  <rect x="22" y="16" width="36" height="34" rx="14" fill="#53409B"/>
-  <path d="M26 49L26 59L36 49Z" fill="#53409B"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Violet rounded-square background — matches brand #53409B -->
+  <rect width="64" height="64" rx="12" fill="#53409B"/>
+  <!-- Speech-bubble mark: nested SVG preserves the original 24×24 path exactly,
+       scaled to 44×44 and centered (10px padding each side). Fill=white for
+       maximum clarity at small sizes (no stroke — fills render crisper at 16px). -->
+  <svg x="10" y="10" width="44" height="44" viewBox="0 0 24 24">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+          fill="white"/>
+  </svg>
 </svg>
