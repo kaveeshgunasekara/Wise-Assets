@@ -23,6 +23,7 @@ import StoryCapture from "@/pages/StoryCapture";
 import Help from "@/pages/Help";
 import NotFound from "@/pages/not-found";
 import VoiceNav from "@/components/VoiceNav";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ function App() {
       <TooltipProvider>
         <AppProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <ScrollToTop />
             <Router />
             <VoiceNav />
           </WouterRouter>

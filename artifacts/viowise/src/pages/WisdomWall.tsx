@@ -249,6 +249,7 @@ export default function WisdomWall() {
     if (el) {
       setIndicator({ left: el.offsetLeft, width: el.offsetWidth });
     }
+    window.scrollTo(0, 0);
   }, [tab]);
 
   const topics = ["Career", "Family", "Migration", "Health", "Confidence", "Study", "Relationships", "Resilience"];
