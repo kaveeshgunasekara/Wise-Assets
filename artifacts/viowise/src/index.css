@@ -262,46 +262,85 @@ select:focus {
 }
 
 /* ── Splash screen animations ─────────────────────────────────────────────── */
+
+/* Logo drifts up from slightly below while fading in — more cinematic than plain scale */
 @keyframes splash-logo-in {
-  from { opacity: 0; transform: scale(0.90); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translateY(22px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
+/* Tagline floats up a touch later */
 @keyframes splash-tag-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes splash-glow-pulse {
-  from { opacity: 0.5; transform: scale(0.92); }
-  to   { opacity: 1;   transform: scale(1.08); }
+/* Thin line fades in last */
+@keyframes splash-line-in {
+  from { opacity: 0; transform: scaleX(0.4); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+/* Outer glow: slow breathing pulse */
+@keyframes splash-glow-breathe {
+  from { opacity: 0.55; transform: scale(0.90); }
+  to   { opacity: 1;    transform: scale(1.12); }
+}
+/* Inner glow: slightly faster, out of phase */
+@keyframes splash-glow-inner-breathe {
+  from { opacity: 0.65; transform: scale(0.88); }
+  to   { opacity: 1;    transform: scale(1.16); }
 }
 
-.splash-glow {
+/* Outer ambient glow — wide, soft, slow */
+.splash-glow-outer {
   position: absolute;
-  width: 340px;
-  height: 340px;
+  width: 520px;
+  height: 520px;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(255,255,255,0.13) 0%, transparent 68%);
-  animation: splash-glow-pulse 2.2s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.14) 0%, transparent 65%);
+  animation: splash-glow-breathe 2.6s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* Inner concentrated glow — tighter, brighter, creates the "lit from within" effect */
+.splash-glow-inner {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.22) 0%, transparent 70%);
+  animation: splash-glow-inner-breathe 1.9s 0.4s ease-in-out infinite alternate;
   pointer-events: none;
 }
 
 .splash-logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   position: relative;
-  animation: splash-logo-in 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  /* Elegant spring easing — smooth, no bounce */
+  animation: splash-logo-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   opacity: 0;
 }
 
 .splash-tagline {
   font-family: var(--app-font-serif);
   font-style: italic;
-  font-size: clamp(1rem, 2.5vw, 1.15rem);
-  color: rgba(255, 255, 255, 0.72);
-  letter-spacing: 0.04em;
+  font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+  color: rgba(255, 255, 255, 0.70);
+  letter-spacing: 0.06em;
   margin: 0;
   position: relative;
-  animation: splash-tag-in 0.65s 0.45s ease-out forwards;
+  /* Staggered 0.65 s after logo starts → clearly sequenced reveal */
+  animation: splash-tag-in 0.75s 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+/* Thin horizontal accent line — last element to appear, quiet and elegant */
+.splash-line {
+  width: 48px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 1px;
+  /* Appears after tagline is settled */
+  animation: splash-line-in 0.5s 1.1s ease-out forwards;
   opacity: 0;
 }
