@@ -213,6 +213,26 @@ export default function WisdomWall() {
     const t = params.get("tab");
     return (TABS as readonly string[]).includes(t ?? "") ? t! : "Wisdom";
   });
+
+  // Keep tab in sync when the URL search string changes (e.g. voice nav sends
+  // /wall?tab=Requests while WisdomWall is already mounted — without this the
+  // useState initializer wouldn't re-run and the tab would stay stale).
+  useEffect(() => {
+    const params = new URLSearchParams(urlSearch.replace(/^\?/, ""));
+    const t = params.get("tab");
+    const resolved = (TABS as readonly string[]).includes(t ?? "") ? t! : "Wisdom";
+    setTab(resolved);
+  }, [urlSearch]);
+
+  // Switches the active tab and writes the new value back to the URL so the
+  // two stay in sync (voice nav, deep links, and browser back all work).
+  const switchTab = useCallback(
+    (t: string) => {
+      setTab(t);
+      setLocation(t === "Wisdom" ? "/wall" : `/wall?tab=${encodeURIComponent(t)}`);
+    },
+    [setLocation],
+  );
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
 
@@ -547,7 +567,7 @@ export default function WisdomWall() {
                 <button
                   key={t}
                   ref={(el) => { tabRefs.current[i] = el; }}
-                  onClick={() => setTab(t)}
+                  onClick={() => switchTab(t)}
                   className={`px-4 py-3 text-[18px] font-medium whitespace-nowrap relative transition-colors duration-150 ${tab === t ? "text-primary" : "text-foreground/55 hover:text-foreground/80"}`}
                 >
                   {t}

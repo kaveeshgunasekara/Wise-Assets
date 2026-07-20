@@ -51,8 +51,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [textSize, setTextSize] = useState<"Standard" | "Large" | "Extra large">("Standard");
-  const [highContrast, setHighContrast] = useState(false);
+  const [textSize, setTextSize] = useState<"Standard" | "Large" | "Extra large">(() => {
+    const saved = localStorage.getItem("vw:textSize");
+    return saved === "Large" || saved === "Extra large" ? saved : "Standard";
+  });
+  const [highContrast, setHighContrast] = useState<boolean>(() => {
+    return localStorage.getItem("vw:highContrast") === "true";
+  });
   const [pendingName, setPendingName] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
   const [pendingAge, setPendingAge] = useState("");
@@ -136,6 +141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (textSize === "Large") multiplier = 1.15;
     if (textSize === "Extra large") multiplier = 1.3;
     document.documentElement.style.setProperty("--text-size-multiplier", multiplier.toString());
+    localStorage.setItem("vw:textSize", textSize);
   }, [textSize]);
 
   useEffect(() => {
@@ -144,6 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else {
       document.documentElement.classList.remove("high-contrast");
     }
+    localStorage.setItem("vw:highContrast", String(highContrast));
   }, [highContrast]);
 
   return (
