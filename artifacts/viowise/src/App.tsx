@@ -25,6 +25,8 @@ import NotFound from "@/pages/not-found";
 import VoiceNav from "@/components/VoiceNav";
 import ScrollToTop from "@/components/ScrollToTop";
 import SplashScreen from "@/components/SplashScreen";
+import CookieBanner from "@/components/CookieBanner";
+import { CookieConsentProvider } from "@/hooks/use-cookie-consent";
 
 const queryClient = new QueryClient();
 
@@ -81,15 +83,18 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <SplashScreen />
-            <ScrollToTop />
-            <Router />
-            <VoiceNav />
-          </WouterRouter>
-          <Toaster />
-        </AppProvider>
+        <CookieConsentProvider>
+          <AppProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <SplashScreen />
+              <ScrollToTop />
+              <Router />
+              <VoiceNav />
+              <CookieBanner />
+            </WouterRouter>
+            <Toaster />
+          </AppProvider>
+        </CookieConsentProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
