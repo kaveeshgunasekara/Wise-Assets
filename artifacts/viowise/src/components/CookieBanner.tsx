@@ -42,26 +42,15 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
       <div className="relative bg-white rounded-[20px] shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
         <div className="p-6 sm:p-8">
           <div className="flex items-start justify-between gap-4 mb-5">
-            <h2
-              id="privacy-modal-title"
-              className="text-xl font-semibold text-foreground"
-            >
+            <h2 id="privacy-modal-title" className="text-xl font-semibold text-foreground">
               Cookies &amp; Privacy
             </h2>
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-foreground/50 hover:bg-secondary transition-colors shrink-0"
-              aria-label="Close privacy policy"
+              aria-label="Close"
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -74,10 +63,7 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
             </p>
             <div>
               <h3 className="font-semibold text-foreground mb-1">Strictly Necessary</h3>
-              <p>
-                Keep you signed in, protect your session, and enable core app features. These cannot
-                be disabled.
-              </p>
+              <p>Keep you signed in, protect your session, and enable core app features. Cannot be disabled.</p>
             </div>
             <div>
               <h3 className="font-semibold text-foreground mb-1">Analytics</h3>
@@ -91,13 +77,9 @@ function PrivacyModal({ onClose }: { onClose: () => void }) {
               <p>
                 Under GDPR you can access, correct, or delete your data, and update cookie
                 preferences anytime via Cookie Settings in the app menu. Contact us at{" "}
-                <a
-                  href="mailto:privacy@viowise.com"
-                  className="text-primary underline underline-offset-2 hover:opacity-75"
-                >
+                <a href="mailto:privacy@viowise.com" className="text-primary underline underline-offset-2 hover:opacity-75">
                   privacy@viowise.com
-                </a>
-                .
+                </a>.
               </p>
             </div>
           </div>
@@ -113,7 +95,6 @@ export default function CookieBanner() {
   const [analyticsOn, setAnalyticsOn] = useState(true);
   const [privacyOpen, setPrivacyOpen] = useState(false);
 
-  // Entrance: mount invisible then slide up — runs after the first paint
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if (!bannerOpen) { setVisible(false); return; }
@@ -126,71 +107,65 @@ export default function CookieBanner() {
   return (
     <>
       {/*
-       * Bottom-LEFT card (VoiceNav lives bottom-RIGHT at z-50, so no conflict).
-       * On mobile: inset-x-3 so it's a slim full-bleed card with side margins.
-       * On sm+: fixed 380px wide, anchored to the left.
+       * Compact card — bottom-left so it doesn't clash with VoiceNav (bottom-right, z-50).
+       * Mobile: inset-x-3 for slim full-bleed feel with breathing room.
+       * Desktop: fixed 360px card.
        */}
       <div
-        className={`fixed bottom-4 inset-x-3 sm:inset-x-auto sm:left-4 sm:w-[380px] z-[45]
-          bg-white rounded-2xl border border-border/60
-          shadow-[0_8px_40px_rgba(83,64,155,0.13),0_2px_8px_rgba(0,0,0,0.06)]
+        className={`fixed bottom-4 inset-x-3 sm:inset-x-auto sm:left-4 sm:w-[360px] z-[45]
+          bg-white rounded-2xl border border-black/[0.07]
+          shadow-[0_4px_6px_-1px_rgba(0,0,0,0.07),0_12px_32px_-4px_rgba(83,64,155,0.14)]
           transition-all duration-300 ease-out
-          ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+          ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
         role="region"
         aria-label="Cookie consent"
       >
-        <div className="p-4">
-          {/* ── Message ──────────────────────────────────────────────── */}
-          <p className="text-[13px] leading-[1.55] text-foreground/65 mb-3">
+        <div className="p-4 flex flex-col gap-3">
+
+          {/* ── Message ───────────────────────────────────────────────── */}
+          <p className="text-[13px] leading-[1.55] text-foreground/65">
             We use cookies to keep VIOWISE working and to understand how it's used.{" "}
             <button
               onClick={() => setPrivacyOpen(true)}
-              className="text-primary hover:underline underline-offset-2 transition-opacity focus-visible:outline-none"
+              className="text-primary underline underline-offset-2 hover:opacity-75 transition-opacity focus-visible:outline-none"
             >
               Learn more
             </button>
           </p>
 
-          {/* ── Expandable category rows ──────────────────────────────── */}
+          {/* ── Expanded cookie category rows ─────────────────────────── */}
           {expanded && (
-            <div className="mb-3 border-t border-border/50 pt-3 space-y-3">
+            <div className="border-t border-black/[0.06] pt-3 flex flex-col gap-3">
+
               {/* Strictly Necessary */}
-              <div>
+              <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-semibold text-foreground">
-                    Strictly Necessary
-                  </span>
-                  <span className="text-[11px] font-medium text-primary/70 tracking-wide">
-                    Always on
-                  </span>
+                  <span className="text-[12px] font-semibold text-foreground">Strictly Necessary</span>
+                  <span className="text-[11px] font-medium text-primary/75 tracking-wide">Always on</span>
                 </div>
-                <p className="mt-0.5 text-[12px] text-foreground/50 leading-snug">
+                <p className="text-[12px] leading-snug text-foreground/50">
                   Auth, security, and core app function.
                 </p>
               </div>
 
               {/* Analytics */}
-              <div>
+              <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between gap-2">
                   <label
-                    htmlFor="analytics-toggle-c"
+                    htmlFor="analytics-toggle-cb"
                     className="text-[12px] font-semibold text-foreground cursor-pointer"
                   >
                     Analytics
                   </label>
-                  <Toggle
-                    id="analytics-toggle-c"
-                    checked={analyticsOn}
-                    onChange={setAnalyticsOn}
-                  />
+                  <Toggle id="analytics-toggle-cb" checked={analyticsOn} onChange={setAnalyticsOn} />
                 </div>
-                <p className="mt-0.5 text-[12px] text-foreground/50 leading-snug">
+                <p className="text-[12px] leading-snug text-foreground/50">
                   Anonymous usage data to help us improve.
                 </p>
               </div>
 
-              {/* Save custom */}
-              <div className="flex justify-end pt-0.5">
+              {/* Save custom choices */}
+              <div className="flex justify-end">
                 <button
                   onClick={() => saveCustom(analyticsOn)}
                   className="text-[12px] font-medium text-white bg-primary hover:bg-primary/90
@@ -203,25 +178,21 @@ export default function CookieBanner() {
             </div>
           )}
 
-          {/* ── Action row ────────────────────────────────────────────── */}
-          <div className="flex items-center gap-1.5">
-            {/* Cookie details toggle */}
+          {/* ── Action row: details link left · buttons right ─────────── */}
+          <div className="flex items-center justify-between gap-3">
+
+            {/* Left: quiet text toggle */}
             <button
               onClick={() => setExpanded((e) => !e)}
               aria-expanded={expanded}
-              className="flex items-center gap-0.5 text-[12px] text-foreground/45
-                hover:text-foreground/65 transition-colors
-                focus-visible:outline-none rounded"
+              className="flex items-center gap-[3px] text-[12px] text-foreground/40
+                hover:text-foreground/60 transition-colors
+                focus-visible:outline-none focus-visible:rounded"
             >
               Cookie details
               <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
+                width="10" height="10" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
                 className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
                 aria-hidden="true"
               >
@@ -229,26 +200,29 @@ export default function CookieBanner() {
               </svg>
             </button>
 
-            {/* Buttons pushed to the right */}
-            <div className="ml-auto flex items-center gap-1.5">
+            {/* Right: matched button pair — outline + solid, same height */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={essentialOnly}
-                className="text-[13px] font-medium text-foreground/55 hover:text-foreground/80
-                  px-2.5 py-1.5 rounded-lg hover:bg-secondary transition-colors
+                className="text-[13px] font-medium px-3.5 py-[7px] rounded-lg
+                  border border-primary/35 text-primary
+                  hover:bg-primary/5 transition-colors
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 Essential only
               </button>
               <button
                 onClick={acceptAll}
-                className="text-[13px] font-medium text-white bg-primary hover:bg-primary/90
-                  px-3 py-1.5 rounded-lg transition-colors active:scale-[0.97]
+                className="text-[13px] font-medium px-3.5 py-[7px] rounded-lg
+                  bg-primary text-white
+                  hover:bg-primary/90 active:scale-[0.97] transition-all
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 Accept all
               </button>
             </div>
           </div>
+
         </div>
       </div>
 
