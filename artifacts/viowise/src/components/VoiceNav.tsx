@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/services/supabase";
 import { useApp } from "@/hooks/use-app";
+import { useCookieConsent } from "@/hooks/use-cookie-consent";
 
 // ── Web Speech API type stubs (not in standard TS lib) ───────────────────────
 interface SpeechRecognitionResultList {
@@ -100,6 +101,7 @@ type VoiceState =
 // ── Main component ────────────────────────────────────────────────────────────
 export default function VoiceNav() {
   const { user, authLoading } = useApp();
+  const { bannerOpen: cookieBannerOpen } = useCookieConsent();
   const [open, setOpen] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>({ kind: "idle" });
   const [, setLocation] = useLocation();
@@ -295,7 +297,9 @@ export default function VoiceNav() {
           aria-label="Voice navigation — tap to speak"
           title="Voice navigation"
           className="fixed right-5 z-50 w-16 h-16 rounded-full bg-primary text-white shadow-[0_4px_24px_rgba(83,64,155,0.45)] hover:bg-primary-hover active:scale-95 transition-all flex items-center justify-center"
-          style={{ bottom: "max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
+          style={{ bottom: cookieBannerOpen
+            ? "max(calc(3.25rem + 1.25rem), calc(env(safe-area-inset-bottom, 0px) + 3.25rem + 1rem))"
+            : "max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 1rem))" }}
         >
           <MicIcon size={28} />
         </button>
