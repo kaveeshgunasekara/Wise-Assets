@@ -201,8 +201,16 @@ export default function Landing() {
         className="relative px-4 sm:px-6 py-4 flex items-center justify-between"
         style={{ zIndex: 20 }}
       >
-        <div>
-          <img src="/viowise-logo-full.png" alt="VIOWISE" className="h-10 w-auto" />
+        <div
+          className="flex items-center gap-2 text-primary font-bold tracking-wide uppercase"
+          style={{ fontSize: "1.125rem" }}
+        >
+          <svg width="26" height="26" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <rect x="6" y="8" width="38" height="26" rx="13" fill="#9B8FCB"/>
+            <rect x="22" y="16" width="36" height="34" rx="14" fill="#53409B"/>
+            <path d="M26 49L26 59L36 49Z" fill="#53409B"/>
+          </svg>
+          VIOWISE
         </div>
         <div className="flex gap-2 sm:gap-4 items-center">
           <Link href="/sign-in" className="px-3 sm:px-4 py-2 font-medium text-foreground hover:text-primary transition-colors">
