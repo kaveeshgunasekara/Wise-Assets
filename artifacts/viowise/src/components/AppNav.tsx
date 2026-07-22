@@ -44,12 +44,8 @@ export default function AppNav() {
       <div className="px-4 sm:px-6 py-3 flex items-center justify-between md:grid md:grid-cols-3">
         {/* ── Left: Logo ────────────────────────────────────────────────── */}
         <div className="flex items-center">
-          <Link
-            href="/wall"
-            className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base shrink-0"
-          >
-            <img src="/viowise-logo.png" alt="" aria-hidden="true" className="h-7 w-auto shrink-0" />
-            VIOWISE
+          <Link href="/wall" className="shrink-0">
+            <img src="/viowise-logo-full.png" alt="VIOWISE" className="h-10 w-auto" />
           </Link>
         </div>
 

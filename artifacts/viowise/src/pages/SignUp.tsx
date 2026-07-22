@@ -39,9 +39,8 @@ export default function SignUp() {
   return (
     <div className="min-h-screen bg-pattern flex flex-col">
       <header className="px-4 sm:px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-primary font-semibold tracking-wide uppercase text-base">
-          <img src="/viowise-logo.png" alt="" aria-hidden="true" className="h-7 w-auto shrink-0" />
-          VIOWISE
+        <Link href="/">
+          <img src="/viowise-logo-full.png" alt="VIOWISE" className="h-10 w-auto" />
         </Link>
         <AccessibilityControl />
       </header>

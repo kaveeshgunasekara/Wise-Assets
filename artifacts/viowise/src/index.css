@@ -124,9 +124,14 @@ body {
   --card-border: #7868BE;
 }
 
-/* Solid readable background in high-contrast — replaces the gradient */
+/* Patterned background in high-contrast */
 .high-contrast body {
-  background: #F0EDF8;
+  background-color: #c4b5e8;
+  background-image: url('/high-contrast-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 /* Make muted text (text-foreground/60, /70, /80) readable in high-contrast */
