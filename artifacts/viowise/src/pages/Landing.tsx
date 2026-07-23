@@ -245,7 +245,7 @@ export default function Landing() {
             className="text-foreground/80 mb-8 sm:mb-12 max-w-2xl animate-hero-in"
             style={{ fontSize: "clamp(1rem, 1.5vw + 0.5rem, 1.25rem)", "--hero-delay": "220ms" } as React.CSSProperties}
           >
-            Real conversations between generations, guided by AI — never replaced by it.
+            Real conversations between generations, guided by AI, never replaced by it.
           </p>
 
           <div
